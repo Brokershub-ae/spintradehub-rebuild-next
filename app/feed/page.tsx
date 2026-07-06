@@ -28,10 +28,14 @@ export default function FeedPage() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const posts = await productService.getPosts();
-        setProducts(posts);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 5000)
+        );
+        const posts = await Promise.race([productService.getPosts(), timeoutPromise]);
+        setProducts(posts as any[]);
       } catch (error) {
         console.error('Error fetching products:', error);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
