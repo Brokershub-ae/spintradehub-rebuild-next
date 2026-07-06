@@ -152,6 +152,11 @@ export default function FeedPage() {
         )}
       </div>
 
+      {/* Floating Create Post Button */}
+      <Link href="/create-post" style={{ position: 'fixed', bottom: '90px', right: '20px', width: '56px', height: '56px', backgroundColor: '#FF8C00', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(255,140,0,0.4)', zIndex: 15, textDecoration: 'none', fontSize: '28px', fontWeight: 'bold', color: 'white' }}>
+        +
+      </Link>
+
       <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', boxShadow: '0 -2px 8px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-around', padding: '8px 0', zIndex: 20 }}>
         <Link href="/" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>🏠</span>

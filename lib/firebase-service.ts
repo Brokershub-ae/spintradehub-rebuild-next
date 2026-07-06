@@ -42,11 +42,15 @@ export interface Product {
   price: string;
   category: string;
   imageUri?: string;
+  pdfUri?: string;
   attachmentUris?: string[];
   rating: number;
   reviewCount: number;
-  isFavorite: boolean;
+  isFavorite?: boolean;
   postType: 'SELL' | 'BUY';
+  quantity?: string;
+  unit?: string;
+  location?: string;
   timestamp: number;
 }
 
