@@ -7,6 +7,7 @@ export default function FaqPage() {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const faqs = [
+    
     {
       q: 'What is SpinTradeHub?',
       a: 'SpinTradeHub is a B2B industrial trading platform that connects suppliers, manufacturers, and buyers globally. It enables businesses to buy and sell industrial products like bearings, lubricants, machinery, and more.'
