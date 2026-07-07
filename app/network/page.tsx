@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { userService, connectionService } from '@/lib/firebase-service';
+import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Link from 'next/link';
 
 export default function NetworkPage() {
   const { user, loading: authLoading } = useAuth();
-  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [displayedUsers, setDisplayedUsers] = useState<any[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,19 +28,26 @@ export default function NetworkPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // For demo, show sample suggested users
-        const sampleUsers = [
-          { uid: '1', name: 'Alice Smith', username: 'alice_smith', email: 'alice@example.com', role: 'supplier', region: 'UAE' },
-          { uid: '2', name: 'Charlie Brown', username: 'charlie_b', email: 'charlie@example.com', role: 'buyer', region: 'India' },
-          { uid: '3', name: 'Diana Prince', username: 'diana_p', email: 'diana@example.com', role: 'supplier', region: 'USA' },
-          { uid: '4', name: 'Frank Miller', username: 'frank_m', email: 'frank@example.com', role: 'buyer', region: 'UK' },
-        ];
-        setSuggestedUsers(sampleUsers);
+        
+        // Fetch all users from Firestore
+        const usersQuery = query(collection(db, 'users'), limit(100));
+        const querySnapshot = await getDocs(usersQuery);
+        const users = querySnapshot.docs
+          .map((doc) => ({
+            uid: doc.id,
+            ...doc.data(),
+          }))
+          .filter((u) => u.uid !== user.uid); // Exclude current user
+        
+        setAllUsers(users);
+        setDisplayedUsers(users);
 
+        // Fetch connection requests
         const requests = await connectionService.getConnectionRequests(user.uid);
         setConnectionRequests(requests);
       } catch (error) {
         console.error('Error fetching network data:', error);
+        setDisplayedUsers([]);
       } finally {
         setLoading(false);
       }
@@ -46,21 +56,25 @@ export default function NetworkPage() {
     fetchData();
   }, [user, authLoading, router]);
 
-  const handleSendConnectionRequest = async (userId: string, userName: string) => {
+  const handleSendConnectionRequest = async (userId: string, userName: string, userEmail: string) => {
     try {
       await connectionService.sendConnectionRequest({
         senderId: user!.uid,
-        senderName: user!.email || 'User',
+        senderName: user!.displayName || user!.email || 'User',
         senderEmail: user!.email || '',
         receiverId: userId,
         receiverName: userName,
-        message: 'Hi! Let\'s connect',
+        message: `Hi ${userName}! I'd like to connect with you for trading opportunities.`,
         timestamp: Date.now(),
         status: 'PENDING',
       });
-      alert('Connection request sent!');
+      alert('✓ Connection request sent!');
+      // Remove user from display
+      setDisplayedUsers(displayedUsers.filter((u) => u.uid !== userId));
+      setAllUsers(allUsers.filter((u) => u.uid !== userId));
     } catch (error) {
       console.error('Error sending connection request:', error);
+      alert('Failed to send connection request');
     }
   };
 
@@ -68,8 +82,10 @@ export default function NetworkPage() {
     try {
       await connectionService.acceptConnectionRequest(requestId);
       setConnectionRequests(connectionRequests.filter((r) => r.id !== requestId));
+      alert('✓ Connection accepted!');
     } catch (error) {
       console.error('Error accepting request:', error);
+      alert('Failed to accept connection');
     }
   };
 
@@ -83,10 +99,21 @@ export default function NetworkPage() {
   };
 
   const handleSearch = async (query: string) => {
-    if (!query.trim()) return;
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setDisplayedUsers(allUsers);
+      return;
+    }
+
     try {
-      const results = await userService.searchUsers(query);
-      setSuggestedUsers(results);
+      // Search by name or username
+      const filtered = allUsers.filter((u) =>
+        u.name?.toLowerCase().includes(query.toLowerCase()) ||
+        u.username?.toLowerCase().includes(query.toLowerCase()) ||
+        u.email?.toLowerCase().includes(query.toLowerCase())
+      );
+      setDisplayedUsers(filtered);
     } catch (error) {
       console.error('Error searching users:', error);
     }
@@ -122,31 +149,64 @@ export default function NetworkPage() {
         {activeTab === 'discover' ? (
           <>
             <div style={{ marginBottom: '16px' }}>
-              <input type="text" placeholder="Search by name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(searchQuery); }} style={{ width: '100%', padding: '12px 16px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')} onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="🔍 Search by name, email..." 
+                  value={searchQuery} 
+                  onChange={(e) => handleSearch(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} 
+                  onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')} 
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} 
+                />
+              </div>
+              {searchQuery && (
+                <p style={{ fontSize: '12px', color: '#999', margin: '8px 0 0 0' }}>
+                  Found {displayedUsers.length} user{displayedUsers.length !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
-              {suggestedUsers.map((user) => (
-                <div key={user.uid} style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '16px', textAlign: 'center', transition: 'all 200ms' }} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)')}>
-                  <div style={{ width: '60px', height: '60px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px', fontWeight: 'bold' }}>
-                    {user.name?.charAt(0).toUpperCase()}
+            {displayedUsers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'white', borderRadius: '12px' }}>
+                <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>🔍</p>
+                <p style={{ color: '#999', fontSize: '14px', margin: 0 }}>
+                  {searchQuery ? 'No users found matching your search' : 'No users available'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+                {displayedUsers.map((u) => (
+                  <div key={u.uid} style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '16px', textAlign: 'center', transition: 'all 200ms' }} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)')}>
+                    <div style={{ width: '60px', height: '60px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px', fontWeight: 'bold' }}>
+                      {u.name?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: '0 0 4px' }}>{u.name || 'Unknown User'}</h3>
+                    <p style={{ fontSize: '12px', color: '#999', margin: 0 }}>@{u.username || u.email?.split('@')[0] || 'user'}</p>
+                    <p style={{ fontSize: '11px', color: '#0056D2', backgroundColor: 'rgba(0,86,210,0.1)', borderRadius: '6px', padding: '4px 8px', alignSelf: 'center', display: 'inline-block', marginTop: '8px', marginBottom: '8px' }}>
+                      {u.role === 'supplier' ? '🏭 Seller' : '👤 Buyer'}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#666', margin: '8px 0' }}>📍 {u.region || 'N/A'}</p>
+                    <p style={{ fontSize: '11px', color: '#999', margin: '4px 0' }}>📧 {u.email}</p>
+                    <button 
+                      onClick={() => handleSendConnectionRequest(u.uid, u.name || 'User', u.email || '')} 
+                      style={{ width: '100%', padding: '10px 12px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }} 
+                      onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')} 
+                      onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
+                    >
+                      🤝 Send Request
+                    </button>
                   </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: '0 0 4px' }}>{user.name}</h3>
-                  <p style={{ fontSize: '12px', color: '#999', margin: 0 }}>@{user.username}</p>
-                  <p style={{ fontSize: '11px', color: '#0056D2', backgroundColor: 'rgba(0,86,210,0.1)', borderRadius: '6px', padding: '4px 8px', alignSelf: 'center', display: 'inline-block', marginTop: '8px', marginBottom: '8px' }}>{user.role}</p>
-                  <p style={{ fontSize: '12px', color: '#666', margin: '8px 0' }}>📍 {user.region}</p>
-                  <button onClick={() => handleSendConnectionRequest(user.uid, user.name)} style={{ width: '100%', padding: '10px 12px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }} onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')} onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}>
-                    Connect
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <>
             {connectionRequests.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-                <p style={{ color: '#999', fontSize: '14px' }}>No pending requests</p>
+              <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'white', borderRadius: '12px' }}>
+                <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📨</p>
+                <p style={{ color: '#999', fontSize: '14px', margin: 0 }}>No pending connection requests</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -154,13 +214,34 @@ export default function NetworkPage() {
                   <div key={request.id} style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>{request.senderName}</h3>
-                        <p style={{ fontSize: '12px', color: '#999', margin: '4px 0' }}>{request.senderEmail}</p>
-                        <p style={{ fontSize: '13px', color: '#666', margin: '8px 0 0' }}>{request.message}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                          <div style={{ width: '40px', height: '40px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px' }}>
+                            {request.senderName?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>{request.senderName || 'Unknown'}</h3>
+                            <p style={{ fontSize: '12px', color: '#999', margin: '2px 0 0 0' }}>{request.senderEmail}</p>
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#666', margin: '8px 0 0', fontStyle: 'italic' }}>"{request.message}"</p>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleAcceptRequest(request.id)} style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }} onMouseOver={(e) => (e.currentTarget.style.background = '#45a049')} onMouseOut={(e) => (e.currentTarget.style.background = '#4CAF50')}>Accept</button>
-                        <button onClick={() => handleRejectRequest(request.id)} style={{ padding: '8px 16px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }} onMouseOver={(e) => (e.currentTarget.style.background = '#da190b')} onMouseOut={(e) => (e.currentTarget.style.background = '#F44336')}>Reject</button>
+                      <div style={{ display: 'flex', gap: '8px', minWidth: 'fit-content' }}>
+                        <button 
+                          onClick={() => handleAcceptRequest(request.id)} 
+                          style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }} 
+                          onMouseOver={(e) => (e.currentTarget.style.background = '#45a049')} 
+                          onMouseOut={(e) => (e.currentTarget.style.background = '#4CAF50')}
+                        >
+                          ✓ Accept
+                        </button>
+                        <button 
+                          onClick={() => handleRejectRequest(request.id)} 
+                          style={{ padding: '8px 16px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }} 
+                          onMouseOver={(e) => (e.currentTarget.style.background = '#da190b')} 
+                          onMouseOut={(e) => (e.currentTarget.style.background = '#F44336')}
+                        >
+                          ✕ Reject
+                        </button>
                       </div>
                     </div>
                   </div>
