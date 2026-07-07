@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { userService, productService, connectionService } from '@/lib/firebase-service';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -13,14 +14,14 @@ export default function ProfilePage() {
     name: '',
     phone: '',
     region: 'UAE',
-    role: 'Buyer',
-    companyName: '',
-    bio: '',
-    website: '',
-    avatar: '',
-    verified: false,
-  });
+    role: 'supplier',
+    email: '',
+    username: '',
+  } as any);
   const [tempData, setTempData] = useState(profileData);
+  const [userProducts, setUserProducts] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -30,41 +31,74 @@ export default function ProfilePage() {
       return;
     }
 
-    // Load from localStorage
-    const saved = localStorage.getItem(`profile_${user.uid}`);
-    if (saved) {
-      setProfileData(JSON.parse(saved));
-      setTempData(JSON.parse(saved));
-    } else {
-      const newProfile = {
-        ...profileData,
-        name: user.displayName || user.email?.split('@')[0] || 'User',
-        companyName: user.displayName ? user.displayName.split(' ')[0] + ' & Co.' : 'Company',
-      };
-      setProfileData(newProfile);
-      setTempData(newProfile);
-      localStorage.setItem(`profile_${user.uid}`, JSON.stringify(newProfile));
-    }
+    loadProfileData();
   }, [user, authLoading, router]);
+
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch user profile from Firestore
+      const profile = await userService.getUserProfile(user!.uid);
+      if (profile) {
+        setProfileData(profile);
+        setTempData(profile);
+      } else {
+        // Create new profile if doesn't exist
+        const newProfile = {
+          uid: user!.uid,
+          name: user!.displayName || user!.email?.split('@')[0] || 'User',
+          email: user!.email || '',
+          username: (user!.email?.split('@')[0] || 'user').toLowerCase(),
+          phone: '',
+          region: 'UAE',
+          role: 'supplier' as const,
+        };
+        await userService.updateProfile(user!.uid, newProfile);
+        setProfileData(newProfile);
+        setTempData(newProfile);
+      }
+
+      // Fetch user's products from Firestore
+      const products = await productService.getPostsByCreator(user!.uid);
+      setUserProducts(products);
+
+      // Fetch user's connections
+      const requests = await connectionService.getConnectionRequests(user!.uid);
+      setConnections(requests);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
 
-  const handleSaveProfile = () => {
-    setProfileData(tempData);
-    localStorage.setItem(`profile_${user?.uid}`, JSON.stringify(tempData));
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    try {
+      await userService.updateProfile(user!.uid, tempData);
+      setProfileData(tempData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile');
+    }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
   }
 
   if (!user) {
     return null;
   }
+
+  const userRating = userProducts.length > 0 ? 4.8 : 0;
+  const totalConnections = connections.length;
 
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -87,29 +121,22 @@ export default function ProfilePage() {
         {/* Profile Card */}
         <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
-            {/* Avatar */}
-            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }}>
               <div style={{ width: '100px', height: '100px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(0,86,210,0.3)' }}>
-                {profileData.avatar ? '📸' : profileData.name?.charAt(0).toUpperCase() || 'U'}
+                {profileData.name?.charAt(0).toUpperCase() || 'U'}
               </div>
-              {profileData.verified && (
-                <div style={{ position: 'absolute', bottom: 0, right: 0, width: '30px', height: '30px', backgroundColor: '#4CAF50', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '16px', border: '3px solid white' }}>
-                  ✓
-                </div>
-              )}
             </div>
 
             {/* User Info */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <h1 style={{ fontSize: '26px', fontWeight: 'bold', color: '#333', margin: 0 }}>{profileData.name}</h1>
-                {profileData.verified && <span style={{ fontSize: '12px', backgroundColor: '#4CAF50', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>✓ Verified</span>}
               </div>
-              <p style={{ fontSize: '13px', color: '#999', margin: '2px 0' }}>@{profileData.name.toLowerCase().replace(/\s+/g, '.')}</p>
+              <p style={{ fontSize: '13px', color: '#999', margin: '2px 0' }}>@{profileData.username || profileData.email?.split('@')[0]}</p>
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px' }}>
-                <span style={{ color: '#666' }}>🏢 {profileData.companyName}</span>
                 <span style={{ color: '#666' }}>📍 {profileData.region}</span>
-                <span style={{ color: '#666' }}>👤 {profileData.role}</span>
+                <span style={{ color: '#666' }}>👤 {profileData.role === 'supplier' ? 'Seller' : 'Buyer'}</span>
+                {profileData.phone && <span style={{ color: '#666' }}>📱 {profileData.phone}</span>}
               </div>
             </div>
 
@@ -127,10 +154,10 @@ export default function ProfilePage() {
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             {[
-              { label: 'Products', value: '12', icon: '📦' },
-              { label: 'Connections', value: '34', icon: '🤝' },
-              { label: 'Rating', value: '4.8', icon: '⭐' },
-              { label: 'Reviews', value: '28', icon: '⭐' },
+              { label: 'Products', value: userProducts.length.toString(), icon: '📦' },
+              { label: 'Connections', value: totalConnections.toString(), icon: '🤝' },
+              { label: 'Rating', value: userRating.toFixed(1), icon: '⭐' },
+              { label: 'Reviews', value: '0', icon: '📝' },
             ].map((stat, i) => (
               <div key={i} style={{ backgroundColor: '#F5F5F5', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', marginBottom: '4px' }}>{stat.icon}</div>
@@ -202,16 +229,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Company Name</label>
-                    <input 
-                      type="text" 
-                      value={tempData.companyName} 
-                      onChange={(e) => setTempData({ ...tempData, companyName: e.target.value })} 
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }} 
-                    />
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Region</label>
                     <select 
@@ -228,9 +246,6 @@ export default function ProfilePage() {
                       <option>Other</option>
                     </select>
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Role</label>
                     <select 
@@ -238,31 +253,10 @@ export default function ProfilePage() {
                       onChange={(e) => setTempData({ ...tempData, role: e.target.value })}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                     >
-                      <option>Buyer</option>
-                      <option>Seller</option>
-                      <option>Both</option>
+                      <option value="supplier">Seller</option>
+                      <option value="buyer">Buyer</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Website</label>
-                    <input 
-                      type="url" 
-                      value={tempData.website} 
-                      onChange={(e) => setTempData({ ...tempData, website: e.target.value })} 
-                      placeholder="https://..."
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }} 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Bio</label>
-                  <textarea 
-                    value={tempData.bio} 
-                    onChange={(e) => setTempData({ ...tempData, bio: e.target.value })} 
-                    placeholder="Tell about your business..."
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', minHeight: '100px', fontFamily: 'Arial' }}
-                  />
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -283,12 +277,12 @@ export default function ProfilePage() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {[
-                  { label: 'Email', value: user.email },
+                  { label: 'Email', value: profileData.email || 'Not set' },
                   { label: 'Phone', value: profileData.phone || 'Not set' },
-                  { label: 'Company', value: profileData.companyName },
                   { label: 'Region', value: profileData.region },
-                  { label: 'Role', value: profileData.role },
-                  { label: 'Website', value: profileData.website || 'Not set' },
+                  { label: 'Role', value: profileData.role === 'supplier' ? 'Seller' : 'Buyer' },
+                  { label: 'Username', value: profileData.username || profileData.email?.split('@')[0] || 'N/A' },
+                  { label: 'UID', value: user.uid.substring(0, 12) + '...' },
                 ].map((item, i) => (
                   <div key={i} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px' }}>
                     <p style={{ fontSize: '11px', fontWeight: '600', color: '#999', margin: '0 0 4px 0', textTransform: 'uppercase' }}>{item.label}</p>
@@ -302,19 +296,29 @@ export default function ProfilePage() {
           {/* My Products Tab */}
           {activeTab === 'products' && (
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Your Listings (12)</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
-                {['Deep Groove Bearings', 'Hydraulic Oil', 'V-Belts', 'Grease 500g', 'Lubricant', 'Machinery Part'].map((product, i) => (
-                  <div key={i} style={{ backgroundColor: '#F5F5F5', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')} onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}>
-                    <div style={{ backgroundColor: '#0056D2', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '28px' }}>📦</div>
-                    <div style={{ padding: '12px' }}>
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</p>
-                      <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>$45.00</p>
-                      <p style={{ fontSize: '10px', color: '#4CAF50', margin: '2px 0 0 0' }}>✓ Active</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Your Listings ({userProducts.length})</h3>
+              {userProducts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📭</p>
+                  <p style={{ fontSize: '14px', margin: 0 }}>No products listed yet</p>
+                  <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Create your first listing to get started</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+                  {userProducts.map((product) => (
+                    <Link key={product.id} href={`/${product.id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{ backgroundColor: '#F5F5F5', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')} onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}>
+                        <div style={{ backgroundColor: '#0056D2', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '28px' }}>📦</div>
+                        <div style={{ padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.productName}</p>
+                          <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>${product.price}</p>
+                          <p style={{ fontSize: '10px', color: '#4CAF50', margin: '2px 0 0 0' }}>✓ Active</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
               <Link href="/create-post" style={{ display: 'inline-block', marginTop: '16px', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
                 ➕ Add New Product
               </Link>
@@ -324,36 +328,43 @@ export default function ProfilePage() {
           {/* My Orders Tab */}
           {activeTab === 'orders' && (
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Recent Purchases (8)</h3>
-              {['Order #001 - 3x Deep Groove Bearings', 'Order #002 - 5L Hydraulic Oil', 'Order #003 - V-Belt Set', 'Order #004 - 2x Grease 500g'].map((order, i) => (
-                <div key={i} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#333', margin: 0 }}>{order}</p>
-                    <p style={{ fontSize: '11px', color: '#999', margin: '4px 0 0 0' }}>Delivered 2 days ago</p>
-                  </div>
-                  <span style={{ backgroundColor: '#4CAF50', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>Delivered</span>
-                </div>
-              ))}
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Recent Purchases</h3>
+              <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#F5F5F5', borderRadius: '8px', color: '#999' }}>
+                <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>🛒</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>No purchase history yet</p>
+                <p style={{ fontSize: '12px', margin: '8px 0 16px 0', color: '#CCC' }}>Browse products and make your first purchase</p>
+                <Link href="/feed" style={{ display: 'inline-block', padding: '10px 20px', backgroundColor: '#0056D2', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: '600' }}>
+                  Browse Feed
+                </Link>
+              </div>
             </div>
           )}
 
           {/* Connections Tab */}
           {activeTab === 'connections' && (
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Your Network (34)</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
-                {['Supplier A', 'Buyer B', 'Company C', 'Trader D', 'Business E', 'Partner F'].map((conn, i) => (
-                  <div key={i} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ width: '50px', height: '50px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
-                      {conn.charAt(0)}
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Your Network ({totalConnections})</h3>
+              {totalConnections === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>🤝</p>
+                  <p style={{ fontSize: '14px', margin: 0 }}>No connections yet</p>
+                  <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Connect with other users to grow your network</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
+                  {connections.map((conn) => (
+                    <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ width: '50px', height: '50px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
+                        {conn.senderName?.charAt(0) || '?'}
+                      </div>
+                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn.senderName}</p>
+                      <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>Connected</p>
                     </div>
-                    <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn}</p>
-                    <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>Connected</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <Link href="/network" style={{ display: 'inline-block', marginTop: '16px', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
-                🤝 View All Connections
+                🤝 Discover More Users
               </Link>
             </div>
           )}
@@ -361,34 +372,21 @@ export default function ProfilePage() {
           {/* Reviews Tab */}
           {activeTab === 'reviews' && (
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Seller Reviews (28)</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Reviews & Ratings</h3>
               <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#F5F5F5', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <span style={{ fontSize: '28px' }}>⭐</span>
                   <div>
-                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#333', margin: 0 }}>4.8/5.0</p>
-                    <p style={{ fontSize: '11px', color: '#999', margin: '2px 0 0 0' }}>Based on 28 reviews</p>
+                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#333', margin: 0 }}>{userRating.toFixed(1)}/5.0</p>
+                    <p style={{ fontSize: '11px', color: '#999', margin: '2px 0 0 0' }}>Based on {userProducts.length} products</p>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginTop: '8px' }}>
-                  <div style={{ display: 'flex', gap: '2px' }}>⭐⭐⭐⭐⭐</div>
-                  <span style={{ color: '#999' }}>24 reviews</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginTop: '4px' }}>
-                  <div style={{ display: 'flex', gap: '2px' }}>⭐⭐⭐⭐</div>
-                  <span style={{ color: '#999' }}>3 reviews</span>
                 </div>
               </div>
-
-              {['Excellent seller! Fast shipping.', 'Great quality products. Highly recommend!', 'Professional and reliable. Will buy again!'].map((review, i) => (
-                <div key={i} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                    {[1, 2, 3, 4, 5].map((star) => <span key={star} style={{ fontSize: '12px' }}>⭐</span>)}
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#333', margin: 0 }}>{review}</p>
-                  <p style={{ fontSize: '10px', color: '#999', margin: '6px 0 0 0' }}>by Buyer {i + 1} • 5 days ago</p>
-                </div>
-              ))}
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+                <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📝</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>No reviews yet</p>
+                <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Reviews will appear when customers purchase from you</p>
+              </div>
             </div>
           )}
         </div>
