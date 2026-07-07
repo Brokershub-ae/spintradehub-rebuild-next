@@ -37,7 +37,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col items-center gap-6">
           {/* Centered Logo & Brand */}
           <div className="flex items-center gap-4">
-            <img src="/spintrade-logo.png" alt="SpinTrade Logo" style={{ height: '80px', objectFit: 'contain' }} />
+            <img src="/logo.png" alt="SpinTrade Logo" style={{ height: '80px', objectFit: 'contain' }} />
             <div style={{ textAlign: 'center' }}>
               <h1 style={{ fontSize: '48px', fontWeight: 'bold', color: 'white', margin: 0, letterSpacing: '1px' }}>SpinTrade</h1>
               <p style={{ fontSize: '18px', fontWeight: '700', color: '#FF8C00', margin: '4px 0 0 0', letterSpacing: '3px' }}>HUB</p>
