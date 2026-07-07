@@ -12,9 +12,7 @@ export function SiteHeader() {
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
         {/* Logo & Brand - Centered */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', cursor: 'pointer' }}>
-          <div style={{ width: '70px', height: '70px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: 'bold', color: 'white', border: '2px solid rgba(255,255,255,0.2)' }}>
-            🏭
-          </div>
+          <img src="/spintrade-logo.png" alt="SpinTrade Logo" style={{ height: '70px', objectFit: 'contain' }} />
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ fontSize: '40px', fontWeight: 'bold', color: 'white', margin: 0, letterSpacing: '1px' }}>SpinTrade</h1>
             <p style={{ fontSize: '16px', fontWeight: '600', color: '#FF8C00', margin: '4px 0 0 0', letterSpacing: '2px' }}>HUB</p>
