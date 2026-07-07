@@ -33,22 +33,25 @@ export default function HomePage() {
 
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
-      <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }} className="sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="SpinTradeHub" style={{ width: '45px', height: '45px' }} />
-            <div>
-              <h1 style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', margin: 0, lineHeight: 1.2 }}>
-                Spin<span style={{color: '#FF8C00'}}>Trade</span>
-              </h1>
-              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', margin: 0, lineHeight: 1 }}>HUB</p>
+      <header style={{ background: 'linear-gradient(135deg, #0056D2 0%, #0041A8 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} className="sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col items-center gap-6">
+          {/* Centered Logo & Brand */}
+          <div className="flex items-center gap-4">
+            <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', fontWeight: 'bold', color: 'white', border: '2px solid rgba(255,255,255,0.2)' }}>
+              🏭
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: 'bold', color: 'white', margin: 0, letterSpacing: '1px' }}>SpinTrade</h1>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#FF8C00', margin: '4px 0 0 0', letterSpacing: '3px' }}>HUB</p>
             </div>
           </div>
+
+          {/* Login/Signup Buttons Centered */}
           <div className="flex gap-2">
-            <Link href="/login" style={{ color: 'white', fontSize: '14px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            <Link href="/login" style={{ color: 'white', fontSize: '14px', padding: '10px 20px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.2)', textDecoration: 'none', fontWeight: '600', border: '1px solid rgba(255,255,255,0.3)', transition: 'all 200ms' }} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)';}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(0)';}}>
               Login
             </Link>
-            <Link href="/signup" style={{ color: '#0056D2', fontSize: '14px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'white' }}>
+            <Link href="/signup" style={{ color: '#0056D2', fontSize: '14px', padding: '10px 20px', borderRadius: '8px', backgroundColor: 'white', textDecoration: 'none', fontWeight: '600', transition: 'all 200ms' }} onMouseEnter={(e) => {e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)';}} onMouseLeave={(e) => {e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)';}}>
               Sign Up
             </Link>
           </div>
