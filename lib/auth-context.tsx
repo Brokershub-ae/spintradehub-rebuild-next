@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
+import { syncAuthUsersToFirestore } from './firebase-sync-utils';
 
 interface AuthContextType {
   user: User | null;
@@ -17,8 +18,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // Auto-sync user to Firestore when they login
+      if (currentUser) {
+        try {
+          await syncAuthUsersToFirestore();
+        } catch (error) {
+          console.error('Failed to sync user data:', error);
+        }
+      }
+      
       setLoading(false);
     });
 
