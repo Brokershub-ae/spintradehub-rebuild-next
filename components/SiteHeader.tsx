@@ -9,6 +9,29 @@ export function SiteHeader() {
 
   return (
     <header style={{ background: 'linear-gradient(135deg, #0056D2 0%, #0041A8 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '16px 0', position: 'sticky', top: 0, zIndex: 100 }}>
+      {/* Download Android App Banner */}
+      <div style={{ background: 'rgba(255,140,0,0.15)', padding: '8px 16px', textAlign: 'center', borderBottom: '1px solid rgba(255,140,0,0.3)' }}>
+        <a 
+          href="https://play.google.com/store/apps/details?id=dev.rahulsuthar.spintradehub" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            color: '#FF8C00', 
+            textDecoration: 'none', 
+            fontSize: '12px', 
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+        >
+          📱 Download Android App
+        </a>
+      </div>
+
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
         {/* Logo & Brand - Centered */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', cursor: 'pointer' }}>

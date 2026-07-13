@@ -66,6 +66,34 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Download Android App Promotion */}
+        <div style={{ background: 'linear-gradient(135deg, #FF8C00 0%, #E67E00 100%)', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 16px rgba(255,140,0,0.3)', textAlign: 'center', color: 'white' }}>
+          <h3 style={{ fontSize: '28px', fontWeight: 'bold', margin: '0 0 12px 0' }}>📱 Trade On The Go</h3>
+          <p style={{ fontSize: '16px', margin: '0 0 20px 0', opacity: 0.95 }}>Download our mobile app for seamless B2B trading anywhere, anytime</p>
+          <a 
+            href="https://play.google.com/store/apps/details?id=dev.rahulsuthar.spintradehub" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              backgroundColor: 'white', 
+              color: '#FF8C00', 
+              padding: '14px 32px', 
+              borderRadius: '12px', 
+              textDecoration: 'none', 
+              fontSize: '16px', 
+              fontWeight: 'bold', 
+              display: 'inline-block',
+              transition: 'all 200ms',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';}}
+            onMouseLeave={(e) => {e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';}}
+          >
+            🔗 Download on Google Play
+          </a>
+        </div>
+
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '12px 16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ color: '#999', fontSize: '20px' }}>🔍</span>
           <input type="text" placeholder="Search products..." style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', fontFamily: 'inherit' }} />
