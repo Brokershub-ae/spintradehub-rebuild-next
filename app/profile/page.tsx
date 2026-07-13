@@ -7,6 +7,36 @@ import { userService, productService, connectionService } from '@/lib/firebase-s
 import { listenToUserConnections } from '@/lib/realtime-sync';
 import Link from 'next/link';
 
+// Quick Action Button Component
+function QuickActionButton({ href, icon, label }: { href: string; icon: string; label: string }) {
+  return (
+    <Link href={href}>
+      <div
+        style={{
+          padding: '16px',
+          textAlign: 'center',
+          borderRadius: '8px',
+          backgroundColor: '#F5F5F5',
+          cursor: 'pointer',
+          transition: 'all 200ms',
+          border: '1px solid #E0E0E0',
+        }}
+        onMouseOver={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = '#E3F2FD';
+          (e.currentTarget as HTMLElement).style.borderColor = '#0056D2';
+        }}
+        onMouseOut={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = '#F5F5F5';
+          (e.currentTarget as HTMLElement).style.borderColor = '#E0E0E0';
+        }}
+      >
+        <div style={{ fontSize: '24px', marginBottom: '6px' }}>{icon}</div>
+        <div style={{ fontSize: '12px', fontWeight: '600', color: '#333' }}>{label}</div>
+      </div>
+    </Link>
+  );
+}
+
 export default function ProfilePage() {
   const { user, logout, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
@@ -174,6 +204,16 @@ export default function ProfilePage() {
                 <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>{stat.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+            <QuickActionButton href="/analytics" icon="📊" label="Analytics" />
+            <QuickActionButton href="/orders" icon="📋" label="Orders" />
+            <QuickActionButton href="/messages" icon="💬" label="Messages" />
+            <QuickActionButton href="/reviews" icon="⭐" label="Reviews" />
+            <QuickActionButton href="/network" icon="🤝" label="Network" />
+            <QuickActionButton href="/feed" icon="📦" label="Browse Feed" />
           </div>
         </div>
 
