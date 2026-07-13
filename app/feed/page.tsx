@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { productService } from '@/lib/firebase-service';
+import { productService, userService } from '@/lib/firebase-service';
 import { listenToAllPosts } from '@/lib/realtime-sync';
+import { BuyModal } from '@/components/BuyModal';
 import Link from 'next/link';
 
 export default function FeedPage() {
@@ -15,6 +16,9 @@ export default function FeedPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const [showBuyModal, setShowBuyModal] = useState(false);
   const router = useRouter();
 
   const categories = ['All', 'Bearings', 'Grease', 'V-Belts', 'Industrial Oils', 'Lubricants', 'Machinery', 'Accessories'];
@@ -68,6 +72,14 @@ export default function FeedPage() {
     setFilteredProducts(filtered);
   }, [products, searchQuery, selectedCategory, sortBy]);
 
+  const handleBuyClick = async (product: any) => {
+    // Get seller info
+    const seller = await userService.getUserProfile(product.creatorId);
+    setSelectedProduct(product);
+    setSelectedSeller(seller);
+    setShowBuyModal(true);
+  };
+
   if (authLoading || loading) {
     return (
       <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -118,8 +130,29 @@ export default function FeedPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {filteredProducts.map((product) => (
-              <Link key={product.id} href={`/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'all 200ms', height: '100%', display: 'flex', flexDirection: 'column' }} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)', e.currentTarget.style.transform = 'translateY(-2px)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)', e.currentTarget.style.transform = 'translateY(0)')}>
+              <div
+                key={product.id}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+                onMouseOver={(e) => (
+                  (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'),
+                  (e.currentTarget.style.transform = 'translateY(-2px)')
+                )}
+                onMouseOut={(e) => (
+                  (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'),
+                  (e.currentTarget.style.transform = 'translateY(0)')
+                )}
+              >
+                <Link href={`/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ width: '100%', height: '150px', backgroundColor: '#E0E0E0', overflow: 'hidden' }}>
                     {product.imageUri ? (
                       <img src={product.imageUri} alt={product.productName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -132,7 +165,7 @@ export default function FeedPage() {
                     <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: '0 0 8px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.productName}</h3>
                     <p style={{ fontSize: '12px', color: '#999', margin: '0 0 8px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{product.description}</p>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#FF8C00' }}>${product.price}</span>
+                      <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#FF8C00' }}>AED {product.price}</span>
                       <span style={{ fontSize: '11px', color: '#999' }}>{product.category}</span>
                     </div>
                     <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>By {product.creatorName}</div>
@@ -141,8 +174,31 @@ export default function FeedPage() {
                       <span style={{ color: '#999', marginLeft: '4px' }}>({product.reviewCount || 0} reviews)</span>
                     </div>
                   </div>
+                </Link>
+                
+                {/* Buy Now Button */}
+                <div style={{ padding: '12px 16px', borderTop: '1px solid #F0F0F0' }}>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleBuyClick(product);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      background: '#0056D2',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                    }}
+                  >
+                    🛒 Buy Now
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
@@ -176,6 +232,19 @@ export default function FeedPage() {
           <span>Profile</span>
         </Link>
       </nav>
+
+      {/* Buy Modal */}
+      {showBuyModal && selectedProduct && (
+        <BuyModal
+          product={selectedProduct}
+          buyer={{ uid: user!.uid, name: user!.displayName, email: user!.email }}
+          seller={selectedSeller}
+          onClose={() => setShowBuyModal(false)}
+          onSuccess={() => {
+            // Reload products or update state as needed
+          }}
+        />
+      )}
     </div>
   );
 }

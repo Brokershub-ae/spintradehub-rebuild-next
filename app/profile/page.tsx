@@ -337,15 +337,11 @@ export default function ProfilePage() {
           {/* My Orders Tab */}
           {activeTab === 'orders' && (
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>Recent Purchases</h3>
-              <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#F5F5F5', borderRadius: '8px', color: '#999' }}>
-                <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>🛒</p>
-                <p style={{ fontSize: '14px', margin: 0 }}>No purchase history yet</p>
-                <p style={{ fontSize: '12px', margin: '8px 0 16px 0', color: '#CCC' }}>Browse products and make your first purchase</p>
-                <Link href="/feed" style={{ display: 'inline-block', padding: '10px 20px', backgroundColor: '#0056D2', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: '600' }}>
-                  Browse Feed
-                </Link>
-              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>📦 Your Orders</h3>
+              <Link href="/orders" style={{ display: 'inline-block', padding: '12px 20px', backgroundColor: '#0056D2', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600', marginBottom: '20px' }}>
+                View All Orders →
+              </Link>
+              <p style={{ color: '#999', fontSize: '13px' }}>Track your purchases and sales in the full Orders page.</p>
             </div>
           )}
 
