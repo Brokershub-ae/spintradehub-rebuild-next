@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { userService, connectionService } from '@/lib/firebase-service';
 import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { listenToAllUsers, stopListening } from '@/lib/realtime-sync';
 import Link from 'next/link';
 
 export default function NetworkPage() {
@@ -25,35 +26,35 @@ export default function NetworkPage() {
       return;
     }
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all users from Firestore
-        const usersQuery = query(collection(db, 'users'), limit(100));
-        const querySnapshot = await getDocs(usersQuery);
-        const users = querySnapshot.docs
-          .map((doc) => ({
-            uid: doc.id,
-            ...doc.data(),
-          }))
-          .filter((u) => u.uid !== user.uid); // Exclude current user
-        
-        setAllUsers(users);
-        setDisplayedUsers(users);
+    setLoading(true);
 
-        // Fetch connection requests
+    // Real-time listener for all users
+    const unsubscribeUsers = listenToAllUsers((users) => {
+      const filtered = users
+        .filter((u) => u.uid !== user.uid) // Exclude current user
+        .filter((u) => u.uid !== undefined); // Ensure valid users
+
+      setAllUsers(filtered);
+      setDisplayedUsers(filtered);
+      setLoading(false);
+    });
+
+    // Fetch connection requests once
+    const fetchRequests = async () => {
+      try {
         const requests = await connectionService.getConnectionRequests(user.uid);
         setConnectionRequests(requests);
       } catch (error) {
-        console.error('Error fetching network data:', error);
-        setDisplayedUsers([]);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching connection requests:', error);
       }
     };
 
-    fetchData();
+    fetchRequests();
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribeUsers?.();
+    };
   }, [user, authLoading, router]);
 
   const handleSendConnectionRequest = async (userId: string, userName: string, userEmail: string) => {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { productService } from '@/lib/firebase-service';
+import { listenToAllPosts } from '@/lib/realtime-sync';
 import Link from 'next/link';
 
 export default function FeedPage() {
@@ -25,23 +26,18 @@ export default function FeedPage() {
       return;
     }
 
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 5000)
-        );
-        const posts = await Promise.race([productService.getPosts(), timeoutPromise]);
-        setProducts(posts as any[]);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLoading(true);
 
-    fetchProducts();
+    // Real-time listener for all posts
+    const unsubscribePosts = listenToAllPosts((posts) => {
+      setProducts(posts);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribePosts?.();
+    };
   }, [user, authLoading, router]);
 
   useEffect(() => {

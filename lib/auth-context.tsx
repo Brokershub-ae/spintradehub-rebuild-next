@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { syncAuthUsersToFirestore } from './firebase-sync-utils';
+import { initializeRealtimeSync, stopAllListeners } from './realtime-sync';
 
 interface AuthContextType {
   user: User | null;
@@ -21,19 +22,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
-      // Auto-sync user to Firestore when they login
       if (currentUser) {
         try {
+          // Auto-sync user to Firestore when they login
           await syncAuthUsersToFirestore();
+          
+          // Initialize real-time sync with Firestore
+          initializeRealtimeSync();
         } catch (error) {
           console.error('Failed to sync user data:', error);
         }
+      } else {
+        // Stop all listeners when user logs out
+        stopAllListeners();
       }
       
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      stopAllListeners();
+    };
   }, []);
 
   const logout = async () => {

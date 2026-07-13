@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { userService, productService, connectionService } from '@/lib/firebase-service';
+import { listenToUserConnections } from '@/lib/realtime-sync';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -32,6 +33,16 @@ export default function ProfilePage() {
     }
 
     loadProfileData();
+
+    // Real-time listener for connections
+    const unsubscribeConnections = listenToUserConnections(user.uid, (connections) => {
+      setConnections(connections);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribeConnections?.();
+    };
   }, [user, authLoading, router]);
 
   const loadProfileData = async () => {
@@ -63,9 +74,7 @@ export default function ProfilePage() {
       const products = await productService.getPostsByCreator(user!.uid);
       setUserProducts(products);
 
-      // Fetch user's connections
-      const requests = await connectionService.getConnectionRequests(user!.uid);
-      setConnections(requests);
+      // Note: connections are now handled by real-time listener above
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
