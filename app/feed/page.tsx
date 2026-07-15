@@ -270,12 +270,23 @@ export default function FeedPage() {
                 )}
               >
                 <Link href={`/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ width: '100%', height: '150px', backgroundColor: '#E0E0E0', overflow: 'hidden' }}>
-                    {product.imageUri ? (
-                      <img src={product.imageUri} alt={product.productName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '12px' }}>No Image</div>
-                    )}
+                  <div style={{ width: '100%', height: '150px', backgroundColor: '#E0E0E0', overflow: 'hidden', position: 'relative' }}>
+                    {product.imageUri && product.imageUri.length > 0 ? (
+                      <img 
+                        src={product.imageUri} 
+                        alt={product.productName} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          console.error('Image load error for:', product.id, 'URL:', product.imageUri);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    {!product.imageUri || product.imageUri.length === 0 ? (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '14px', fontWeight: '600', backgroundColor: '#F0F0F0' }}>
+                        📦 {product.category || 'Product'}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '11px', fontWeight: '600', color: '#0056D2', backgroundColor: 'rgba(0,86,210,0.1)', borderRadius: '8px', padding: '4px 8px', alignSelf: 'flex-start', marginBottom: '8px' }}>{product.postType}</span>
