@@ -126,8 +126,8 @@ export default function MessagesPage() {
         </div>
       </header>
 
-      <div style={{ flex: 1, display: 'flex' }}>
-        <div style={{ width: '300px', backgroundColor: 'white', borderRight: '1px solid #E0E0E0', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div style={{ width: 'min(300px, 30%)', backgroundColor: 'white', borderRight: '1px solid #E0E0E0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '16px', borderBottom: '1px solid #E0E0E0' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>Conversations</h2>
           </div>

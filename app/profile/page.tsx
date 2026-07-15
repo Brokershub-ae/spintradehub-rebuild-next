@@ -191,7 +191,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
             {[
               { label: 'Products', value: userProducts.length.toString(), icon: '📦' },
               { label: 'Connections', value: totalConnections.toString(), icon: '🤝' },

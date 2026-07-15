@@ -225,10 +225,10 @@ export default function OrdersPage() {
                 background: 'white',
                 border: '1px solid #E0E0E0',
                 borderRadius: '8px',
-                padding: '20px',
+                padding: '16px',
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr 1fr',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
                 alignItems: 'center',
               }}
             >
@@ -303,7 +303,7 @@ export default function OrdersPage() {
 
               {/* More Details */}
               <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #F0F0F0', paddingTop: '15px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', fontSize: '12px', marginBottom: '15px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', fontSize: '12px', marginBottom: '15px' }}>
                   <div>
                     <p style={{ color: '#999', margin: '0 0 3px 0' }}>
                       {activeTab === 'purchases' ? 'Seller' : 'Buyer'}
