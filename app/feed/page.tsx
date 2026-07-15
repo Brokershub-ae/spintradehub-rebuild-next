@@ -102,41 +102,61 @@ export default function FeedPage() {
 
   useEffect(() => {
     let filtered = products.filter((p) => {
-      const matchesSearch =
-        p.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-      const productPrice = parseFloat(p.price.replace(/[^0-9.]/g, '')) || 0;
-      const matchesPrice = productPrice <= maxPrice;
-      const matchesRating = (p.rating || 0) >= minRating;
-      return matchesSearch && matchesCategory && matchesPrice && matchesRating;
+      try {
+        const matchesSearch =
+          (p.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+        
+        // Safely parse price (can be string or number)
+        const priceStr = String(p.price || '0').replace(/[^0-9.]/g, '');
+        const productPrice = parseFloat(priceStr) || 0;
+        const matchesPrice = productPrice <= maxPrice;
+        const matchesRating = (p.rating || 0) >= minRating;
+        return matchesSearch && matchesCategory && matchesPrice && matchesRating;
+      } catch (err) {
+        console.error('Filter error for product:', p, err);
+        return false;
+      }
     });
 
     if (sortBy === 'newest') {
-      filtered.sort((a, b) => b.timestamp - a.timestamp);
+      filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     } else if (sortBy === 'price-low') {
       filtered.sort((a, b) => {
-        const priceA = parseFloat(a.price.replace(/[^0-9.]/g, '')) || 0;
-        const priceB = parseFloat(b.price.replace(/[^0-9.]/g, '')) || 0;
+        const priceA = parseFloat(String(a.price || '0').replace(/[^0-9.]/g, '')) || 0;
+        const priceB = parseFloat(String(b.price || '0').replace(/[^0-9.]/g, '')) || 0;
         return priceA - priceB;
       });
     } else if (sortBy === 'price-high') {
       filtered.sort((a, b) => {
-        const priceA = parseFloat(a.price.replace(/[^0-9.]/g, '')) || 0;
-        const priceB = parseFloat(b.price.replace(/[^0-9.]/g, '')) || 0;
+        const priceA = parseFloat(String(a.price || '0').replace(/[^0-9.]/g, '')) || 0;
+        const priceB = parseFloat(String(b.price || '0').replace(/[^0-9.]/g, '')) || 0;
         return priceB - priceA;
       });
     }
 
     setFilteredProducts(filtered);
-  }, [products, searchQuery, selectedCategory, sortBy]);
+  }, [products, searchQuery, selectedCategory, sortBy, minRating, maxPrice]);
 
   const handleBuyClick = async (product: any) => {
-    // Get seller info
-    const seller = await userService.getUserProfile(product.creatorId);
-    setSelectedProduct(product);
-    setSelectedSeller(seller);
-    setShowBuyModal(true);
+    try {
+      // Get seller ID with fallback
+      const sellerId = product.creatorId || product.userId || product.seller;
+      if (!sellerId) {
+        addToast({ type: 'error', title: 'Error', message: 'Seller information not available' });
+        return;
+      }
+
+      // Get seller info
+      const seller = await userService.getUserProfile(sellerId).catch(() => null);
+      setSelectedProduct(product);
+      setSelectedSeller(seller);
+      setShowBuyModal(true);
+    } catch (error) {
+      console.error('Error opening buy modal:', error);
+      addToast({ type: 'error', title: 'Error', message: 'Failed to open order form' });
+    }
   };
 
   if (authLoading || loading) {
