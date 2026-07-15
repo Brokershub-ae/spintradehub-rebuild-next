@@ -58,6 +58,10 @@ export default function FeedPage() {
       wishlistService.getUserWishlist(user.uid).then((items) => {
         const wishlistIds = new Set(items.map((item: any) => item.productId || item.id).filter(Boolean) as string[]);
         setWishlisted(wishlistIds);
+      }).catch((error) => {
+        console.error('Failed to load wishlist:', error);
+        // Continue without wishlist if it fails
+        setWishlisted(new Set());
       });
     }
   }, [user]);
@@ -70,8 +74,8 @@ export default function FeedPage() {
 
     try {
       if (wishlisted.has(productId)) {
-        const item = await wishlistService.getUserWishlist(user.uid);
-        const wishItem = item.find(w => w.productId === productId);
+        const item = await wishlistService.getUserWishlist(user.uid).catch(() => []);
+        const wishItem = item.find((w: any) => w.productId === productId);
         if (wishItem?.id) {
           await wishlistService.removeFromWishlist(wishItem.id);
           setWishlisted(prev => {
@@ -82,7 +86,11 @@ export default function FeedPage() {
           addToast({ type: 'success', title: 'Removed', message: `${productName} removed from wishlist` });
         }
       } else {
-        const wishlistId = await wishlistService.addToWishlist(user.uid, productId, productName, price, sellerName, sellerId, imageUri);
+        if (!sellerId || !sellerName) {
+          addToast({ type: 'warning', title: 'Error', message: 'Unable to save this item' });
+          return;
+        }
+        await wishlistService.addToWishlist(user.uid, productId, productName, String(price), sellerName, sellerId, imageUri);
         setWishlisted(prev => new Set([...prev, productId]));
         addToast({ type: 'success', title: 'Saved', message: `${productName} added to wishlist` });
       }
@@ -259,7 +267,11 @@ export default function FeedPage() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      handleWishlistToggle(product.id, product.productName, product.price, product.creatorName, product.creatorId, product.imageUri);
+                      const sellerId = product.creatorId || product.userId || product.seller || '';
+                      const sellerName = product.creatorName || product.userName || 'Unknown Seller';
+                      if (sellerId) {
+                        handleWishlistToggle(product.id, product.productName, product.price, sellerName, sellerId, product.imageUri);
+                      }
                     }}
                     style={{
                       width: '44px',
@@ -276,6 +288,7 @@ export default function FeedPage() {
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
+                    title={wishlisted.has(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
                   >
                     {wishlisted.has(product.id) ? '❤️' : '🤍'}
                   </button>
