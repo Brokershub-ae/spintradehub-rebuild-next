@@ -213,7 +213,9 @@ export default function ProfilePage() {
             <QuickActionButton href="/messages" icon="💬" label="Messages" />
             <QuickActionButton href="/reviews" icon="⭐" label="Reviews" />
             <QuickActionButton href="/network" icon="🤝" label="Network" />
+            {profileData.role === 'supplier' && <QuickActionButton href="/seller-dashboard" icon="📊" label="Seller Dashboard" />}
             <QuickActionButton href="/feed" icon="📦" label="Browse Feed" />
+            <QuickActionButton href="/wishlist" icon="❤️" label="Wishlist" />
           </div>
         </div>
 

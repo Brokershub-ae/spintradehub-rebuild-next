@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { productService, userService } from '@/lib/firebase-service';
+import { wishlistService } from '@/lib/firebase-wishlist';
 import { listenToAllPosts } from '@/lib/realtime-sync';
 import { BuyModal } from '@/components/BuyModal';
+import { useToast } from '@/lib/toast-context';
 import Link from 'next/link';
 
 export default function FeedPage() {
   const { user, loading: authLoading } = useAuth();
+  const { addToast } = useToast();
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +22,11 @@ export default function FeedPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [wishlisted, setWishlisted] = useState<Set<string>>(new Set());
+  const [minRating, setMinRating] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(100000);
+  const [minResponseTime, setMinResponseTime] = useState(0);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const router = useRouter();
 
   const categories = ['All', 'Bearings', 'Grease', 'V-Belts', 'Industrial Oils', 'Lubricants', 'Machinery', 'Accessories'];
@@ -44,13 +52,56 @@ export default function FeedPage() {
     };
   }, [user, authLoading, router]);
 
+  // Load wishlist on mount
+  useEffect(() => {
+    if (user) {
+      wishlistService.getUserWishlist(user.uid).then((items) => {
+        const wishlistIds = new Set(items.map((item: any) => item.productId || item.id).filter(Boolean) as string[]);
+        setWishlisted(wishlistIds);
+      });
+    }
+  }, [user]);
+
+  const handleWishlistToggle = async (productId: string, productName: string, price: any, sellerName: string, sellerId: string, imageUri?: string) => {
+    if (!user) {
+      addToast({ type: 'warning', title: 'Login Required', message: 'Please login to save items' });
+      return;
+    }
+
+    try {
+      if (wishlisted.has(productId)) {
+        const item = await wishlistService.getUserWishlist(user.uid);
+        const wishItem = item.find(w => w.productId === productId);
+        if (wishItem?.id) {
+          await wishlistService.removeFromWishlist(wishItem.id);
+          setWishlisted(prev => {
+            const updated = new Set(prev);
+            updated.delete(productId);
+            return updated;
+          });
+          addToast({ type: 'success', title: 'Removed', message: `${productName} removed from wishlist` });
+        }
+      } else {
+        const wishlistId = await wishlistService.addToWishlist(user.uid, productId, productName, price, sellerName, sellerId, imageUri);
+        setWishlisted(prev => new Set([...prev, productId]));
+        addToast({ type: 'success', title: 'Saved', message: `${productName} added to wishlist` });
+      }
+    } catch (error) {
+      console.error('Wishlist error:', error);
+      addToast({ type: 'error', title: 'Error', message: 'Failed to update wishlist' });
+    }
+  };
+
   useEffect(() => {
     let filtered = products.filter((p) => {
       const matchesSearch =
         p.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const productPrice = parseFloat(p.price.replace(/[^0-9.]/g, '')) || 0;
+      const matchesPrice = productPrice <= maxPrice;
+      const matchesRating = (p.rating || 0) >= minRating;
+      return matchesSearch && matchesCategory && matchesPrice && matchesRating;
     });
 
     if (sortBy === 'newest') {
@@ -115,13 +166,40 @@ export default function FeedPage() {
           ))}
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #E0E0E0', fontSize: '13px', backgroundColor: 'white', cursor: 'pointer' }}>
             <option value="newest">Newest First</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
           </select>
+          <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} style={{ padding: '10px 16px', backgroundColor: showAdvancedFilters ? '#0056D2' : '#E0E0E0', color: showAdvancedFilters ? 'white' : '#333', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+            🔍 Filters {showAdvancedFilters ? '✕' : '+'}
+          </button>
         </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#333' }}>Advanced Filters</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>Min Rating: {minRating}★</label>
+                <input type="range" min="0" max="5" step="0.5" value={minRating} onChange={(e) => setMinRating(parseFloat(e.target.value))} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>Max Price: AED {maxPrice}</label>
+                <input type="range" min="0" max="100000" step="1000" value={maxPrice} onChange={(e) => setMaxPrice(parseInt(e.target.value))} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>Response Time (hrs): {minResponseTime}</label>
+                <input type="range" min="0" max="48" step="1" value={minResponseTime} onChange={(e) => setMinResponseTime(parseInt(e.target.value))} style={{ width: '100%' }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                <button onClick={() => { setMinRating(0); setMaxPrice(100000); setMinResponseTime(0); }} style={{ flex: 1, padding: '8px 12px', backgroundColor: '#999', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Clear Filters</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {filteredProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 24px' }}>
@@ -176,15 +254,38 @@ export default function FeedPage() {
                   </div>
                 </Link>
                 
-                {/* Buy Now Button */}
-                <div style={{ padding: '12px 16px', borderTop: '1px solid #F0F0F0' }}>
+                {/* Wishlist & Buy Buttons */}
+                <div style={{ padding: '12px 16px', borderTop: '1px solid #F0F0F0', display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleWishlistToggle(product.id, product.productName, product.price, product.creatorName, product.creatorId, product.imageUri);
+                    }}
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      background: wishlisted.has(product.id) ? '#FF6B6B' : '#F0F0F0',
+                      color: wishlisted.has(product.id) ? 'white' : '#999',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '18px',
+                      transition: 'all 200ms',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {wishlisted.has(product.id) ? '❤️' : '🤍'}
+                  </button>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       handleBuyClick(product);
                     }}
                     style={{
-                      width: '100%',
+                      flex: 1,
                       padding: '10px',
                       background: '#0056D2',
                       color: 'white',
