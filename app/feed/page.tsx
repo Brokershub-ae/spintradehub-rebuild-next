@@ -68,13 +68,21 @@ export default function FeedPage() {
 
   const handleWishlistToggle = async (productId: string, productName: string, price: any, sellerName: string, sellerId: string, imageUri?: string) => {
     if (!user) {
+      console.warn('⚠️ User not authenticated');
       addToast({ type: 'warning', title: 'Login Required', message: 'Please login to save items' });
       return;
     }
 
+    console.log('🔄 Toggling wishlist for product:', productId, 'User:', user.uid);
+
     try {
       if (wishlisted.has(productId)) {
-        const item = await wishlistService.getUserWishlist(user.uid).catch(() => []);
+        // Remove from wishlist
+        console.log('📍 Removing from wishlist...');
+        const item = await wishlistService.getUserWishlist(user.uid).catch((err) => {
+          console.error('Error fetching wishlist:', err);
+          return [];
+        });
         const wishItem = item.find((w: any) => w.productId === productId);
         if (wishItem?.id) {
           await wishlistService.removeFromWishlist(wishItem.id);
@@ -83,20 +91,23 @@ export default function FeedPage() {
             updated.delete(productId);
             return updated;
           });
+          console.log('✅ Removed from wishlist');
           addToast({ type: 'success', title: 'Removed', message: `${productName} removed from wishlist` });
+        } else {
+          console.warn('⚠️ Wishlist item not found');
+          addToast({ type: 'warning', title: 'Not Found', message: 'Could not find item in wishlist' });
         }
       } else {
-        if (!sellerId || !sellerName) {
-          addToast({ type: 'warning', title: 'Error', message: 'Unable to save this item' });
-          return;
-        }
-        await wishlistService.addToWishlist(user.uid, productId, productName, String(price), sellerName, sellerId, imageUri);
+        // Add to wishlist
+        console.log('📍 Adding to wishlist with seller:', sellerId, sellerName);
+        const docId = await wishlistService.addToWishlist(user.uid, productId, productName, String(price), sellerName, sellerId, imageUri);
+        console.log('✅ Added to wishlist with ID:', docId);
         setWishlisted(prev => new Set([...prev, productId]));
         addToast({ type: 'success', title: 'Saved', message: `${productName} added to wishlist` });
       }
     } catch (error) {
-      console.error('Wishlist error:', error);
-      addToast({ type: 'error', title: 'Error', message: 'Failed to update wishlist' });
+      console.error('❌ Wishlist error:', error);
+      addToast({ type: 'error', title: 'Error', message: 'Failed to update wishlist. Try again.' });
     }
   };
 
@@ -287,9 +298,20 @@ export default function FeedPage() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      const sellerId = product.creatorId || product.userId || product.seller || '';
+                      e.stopPropagation();
+                      
+                      console.log('❤️ Wishlist button clicked for product:', product.id);
+                      console.log('Product data:', product);
+                      
+                      const sellerId = product.creatorId || product.userId || product.seller;
                       const sellerName = product.creatorName || product.userName || 'Unknown Seller';
-                      if (sellerId) {
+                      
+                      console.log('Seller ID:', sellerId, 'Seller Name:', sellerName);
+                      
+                      if (!sellerId) {
+                        console.warn('⚠️ No seller ID found. Will use default seller.');
+                        handleWishlistToggle(product.id, product.productName, product.price, sellerName || 'Unknown', 'unknown-seller', product.imageUri);
+                      } else {
                         handleWishlistToggle(product.id, product.productName, product.price, sellerName, sellerId, product.imageUri);
                       }
                     }}
