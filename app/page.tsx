@@ -168,55 +168,22 @@ export default function HomePage() {
           <span>Home</span>
         </Link>
         <Link href="/feed" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
-          <span style={{ fontSize: '24px', marginBottom: '4px' }}>➕</span>
-          <span>Post</span>
+          <span style={{ fontSize: '24px', marginBottom: '4px' }}>📦</span>
+          <span>Feed</span>
+        </Link>
+        <Link href="/messages" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px' }}>💬</span>
+          <span>Messages</span>
         </Link>
         <Link href="/network" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>🤝</span>
           <span>Network</span>
-        </Link>
-        <Link href="/chatbot" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
-          <span style={{ fontSize: '24px', marginBottom: '4px' }}>🤖</span>
-          <span>AI Chat</span>
         </Link>
         <Link href="/profile" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>👤</span>
           <span>Profile</span>
         </Link>
       </nav>
-
-      {/* Floating Chat Button */}
-      <Link
-        href="/chatbot"
-        style={{
-          position: 'fixed',
-          bottom: '90px',
-          right: '20px',
-          width: '60px',
-          height: '60px',
-          backgroundColor: '#0056D2',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 20px rgba(0,86,210,0.5)',
-          zIndex: 15,
-          textDecoration: 'none',
-          fontSize: '28px',
-          animation: 'pulse 2s infinite',
-        }}
-        title="Chat with SpinBot AI"
-      >
-        🤖
-      </Link>
-
-      <style>{`
-        @keyframes pulse {
-          0% { box-shadow: 0 4px 20px rgba(0,86,210,0.5); transform: scale(1); }
-          50% { box-shadow: 0 4px 30px rgba(0,86,210,0.8); transform: scale(1.05); }
-          100% { box-shadow: 0 4px 20px rgba(0,86,210,0.5); transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }
