@@ -210,6 +210,7 @@ export default function ProfilePage() {
           <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
             <QuickActionButton href="/analytics" icon="📊" label="Analytics" />
             <QuickActionButton href="/orders" icon="📋" label="Orders" />
+            <QuickActionButton href="/documents" icon="📄" label="Documents" />
             <QuickActionButton href="/messages" icon="💬" label="Messages" />
             <QuickActionButton href="/reviews" icon="⭐" label="Reviews" />
             <QuickActionButton href="/network" icon="🤝" label="Network" />
