@@ -420,7 +420,6 @@ export default function DocumentsPage() {
                 <div class="party-label">From (Seller)</div>
                 <div class="party-name">${doc.senderName.includes('@') ? 'SpinTradeHub Seller' : doc.senderName}</div>
                 <div class="party-sub">📧 support@spintradehub.com</div>
-                <div class="party-sub">📞 +971541635009</div>
               </div>
               <div class="party-box">
                 <div class="party-label">To (Buyer)</div>
