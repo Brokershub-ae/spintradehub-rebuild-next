@@ -270,23 +270,35 @@ export default function FeedPage() {
                 )}
               >
                 <Link href={`/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ width: '100%', height: '150px', backgroundColor: '#E0E0E0', overflow: 'hidden', position: 'relative' }}>
-                    {product.imageUri && product.imageUri.length > 0 ? (
-                      <img 
-                        src={product.imageUri} 
-                        alt={product.productName} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          console.error('Image load error for:', product.id, 'URL:', product.imageUri);
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : null}
-                    {!product.imageUri || product.imageUri.length === 0 ? (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '14px', fontWeight: '600', backgroundColor: '#F0F0F0' }}>
-                        📦 {product.category || 'Product'}
-                      </div>
-                    ) : null}
+                  <div style={{ width: '100%', height: '180px', backgroundColor: '#E0E0E0', overflow: 'hidden', position: 'relative' }}>
+                    {(() => {
+                      // Check all possible image field names (Android app uses different names)
+                      const imageUrl = product.imageUri || product.imageUrl || product.image || product.photo || product.thumbnail || product.photoUrl || product.img || '';
+                      if (imageUrl && imageUrl.length > 0) {
+                        return (
+                          <img
+                            src={imageUrl}
+                            alt={product.productName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              // If image fails to load, show placeholder
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#999;background:#F5F5F5;gap:8px"><span style="font-size:32px">📦</span><span style="font-size:12px;font-weight:600">${product.category || 'Product'}</span></div>`;
+                              }
+                            }}
+                          />
+                        );
+                      }
+                      return (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '12px', fontWeight: '600', backgroundColor: '#F5F5F5', gap: '8px' }}>
+                          <span style={{ fontSize: '32px' }}>📦</span>
+                          <span>{product.category || 'Product'}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '11px', fontWeight: '600', color: '#0056D2', backgroundColor: 'rgba(0,86,210,0.1)', borderRadius: '8px', padding: '4px 8px', alignSelf: 'flex-start', marginBottom: '8px' }}>{product.postType}</span>
