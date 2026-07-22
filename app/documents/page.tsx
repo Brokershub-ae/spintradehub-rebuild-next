@@ -129,55 +129,369 @@ export default function DocumentsPage() {
   };
 
   const handlePrint = (doc: CommerceDoc) => {
+    const typeColor = doc.type === 'QUOTATION' ? '#9C27B0' : doc.type === 'INVOICE' ? '#FF8C00' : '#0056D2';
+    const typeLabel = doc.type === 'PURCHASE_BILL' ? 'PURCHASE BILL' : doc.type;
+    const statusBg = doc.status === 'ACCEPTED' ? '#4CAF50' : doc.status === 'REJECTED' ? '#F44336' : '#FF8C00';
+    const logoUrl = 'https://spintradehub.com/logo.png';
+
     const printContent = `
-      <html><head><title>${doc.type} - ${doc.docNumber}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 3px solid #0056D2; padding-bottom: 20px; }
-        .logo { font-size: 28px; font-weight: bold; color: #0056D2; }
-        .doc-type { font-size: 22px; font-weight: bold; color: #FF8C00; }
-        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0; }
-        .party h4 { color: #0056D2; margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th { background: #0056D2; color: white; padding: 10px; text-align: left; }
-        td { padding: 10px; border-bottom: 1px solid #E0E0E0; }
-        .total-row { font-weight: bold; font-size: 16px; background: #F5F5F5; }
-        .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #FFA500; color: white; }
-        .footer { margin-top: 40px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #E0E0E0; padding-top: 20px; }
-      </style></head>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${typeLabel} - ${doc.docNumber}</title>
+        <meta charset="utf-8"/>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          @page { size: A4; margin: 0; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #222;
+            background: white;
+            position: relative;
+            min-height: 100vh;
+          }
+
+          /* ===== WATERMARK ===== */
+          .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 500px;
+            background-image: url('${logoUrl}');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.06;
+            z-index: 0;
+            pointer-events: none;
+          }
+
+          .page {
+            position: relative;
+            z-index: 1;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+          }
+
+          /* ===== TOP BANNER ===== */
+          .top-banner {
+            background: linear-gradient(135deg, #0056D2 0%, #003A9B 100%);
+            padding: 28px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+          }
+          .brand-logo {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+          }
+          .brand-text .name {
+            font-size: 26px;
+            font-weight: 900;
+            color: white;
+            letter-spacing: 1px;
+          }
+          .brand-text .tagline {
+            font-size: 11px;
+            color: rgba(255,255,255,0.75);
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+          }
+          .brand-text .contact {
+            font-size: 10px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+          }
+          .doc-badge {
+            text-align: right;
+          }
+          .doc-badge .type-label {
+            font-size: 28px;
+            font-weight: 900;
+            color: #FF8C00;
+            letter-spacing: 2px;
+          }
+          .doc-badge .doc-number {
+            font-size: 13px;
+            color: rgba(255,255,255,0.9);
+            margin-top: 4px;
+          }
+          .doc-badge .doc-date {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            background: ${statusBg};
+            color: white;
+          }
+
+          /* ===== ORANGE STRIPE ===== */
+          .stripe {
+            height: 5px;
+            background: linear-gradient(90deg, #FF8C00, #FF6B00, #0056D2);
+          }
+
+          /* ===== CONTENT ===== */
+          .content { padding: 36px 40px; flex: 1; }
+
+          /* Parties */
+          .parties {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          .party-box {
+            background: #F8FAFF;
+            border: 1px solid #E0EAFF;
+            border-radius: 10px;
+            padding: 16px 20px;
+            border-left: 4px solid #0056D2;
+          }
+          .party-box .party-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #0056D2;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+          }
+          .party-box .party-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a1a;
+          }
+          .party-box .party-sub {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+          }
+
+          /* Items Table */
+          .table-wrap { margin-bottom: 24px; }
+          table { width: 100%; border-collapse: collapse; border-radius: 10px; overflow: hidden; }
+          thead tr {
+            background: linear-gradient(135deg, #0056D2, #003A9B);
+            color: white;
+          }
+          thead th {
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+          }
+          tbody tr { border-bottom: 1px solid #EEF2FF; }
+          tbody tr:nth-child(even) { background: #F8FAFF; }
+          tbody tr:last-child { border-bottom: none; }
+          tbody td { padding: 12px 16px; font-size: 13px; }
+          .td-right { text-align: right; }
+          .td-center { text-align: center; }
+          .item-desc { font-weight: 600; color: #222; }
+
+          /* Total row */
+          .total-section {
+            background: linear-gradient(135deg, #0056D2 0%, #003A9B 100%);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+          }
+          .total-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.85);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .total-amount {
+            font-size: 26px;
+            font-weight: 900;
+            color: #FF8C00;
+          }
+
+          /* Notes */
+          .notes-box {
+            background: #FFFBF0;
+            border: 1px solid #FFE0A0;
+            border-left: 4px solid #FF8C00;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            color: #555;
+          }
+          .notes-box strong { color: #FF8C00; display: block; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+
+          /* Signature area */
+          .signature-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+          }
+          .sig-box {
+            border-top: 2px dashed #DDE;
+            padding-top: 10px;
+          }
+          .sig-label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+
+          /* ===== FOOTER ===== */
+          .footer {
+            background: #F2F5FF;
+            border-top: 3px solid #0056D2;
+            padding: 16px 40px;
+            text-align: center;
+          }
+          .footer .footer-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            vertical-align: middle;
+            margin-right: 8px;
+            opacity: 0.7;
+          }
+          .footer p { font-size: 11px; color: #777; margin: 2px 0; }
+          .footer .footer-brand { font-size: 13px; font-weight: 700; color: #0056D2; }
+          .footer .tagline-footer { color: #FF8C00; font-weight: 600; }
+
+          /* Right-align column */
+          .text-right { text-align: right; }
+
+          @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .watermark { position: fixed; }
+          }
+        </style>
+      </head>
       <body>
-        <div class="header">
-          <div>
-            <div class="logo">SpinTradeHub</div>
-            <div style="color:#999;font-size:12px;">B2B Industrial Trading Platform</div>
-            <div style="color:#999;font-size:12px;">support@spintradehub.com | +971541635009</div>
+        <!-- Watermark -->
+        <div class="watermark"></div>
+
+        <div class="page">
+          <!-- Top Banner -->
+          <div class="top-banner">
+            <div class="brand-area">
+              <img src="${logoUrl}" class="brand-logo" alt="SpinTradeHub" onerror="this.style.display='none'" />
+              <div class="brand-text">
+                <div class="name">SpinTradeHub</div>
+                <div class="tagline">B2B Industrial Trading Platform</div>
+                <div class="contact">📧 support@spintradehub.com &nbsp;|&nbsp; 📞 +971541635009</div>
+                <div class="contact">🌐 spintradehub.com</div>
+              </div>
+            </div>
+            <div class="doc-badge">
+              <div class="type-label">${typeLabel}</div>
+              <div class="doc-number">Doc No: <strong>${doc.docNumber}</strong></div>
+              <div class="doc-date">Date: ${new Date(doc.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+              <div><span class="status-badge">${doc.status}</span></div>
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div class="doc-type">${doc.type.replace('_', ' ')}</div>
-            <div style="font-size:14px;color:#666;">Doc No: <strong>${doc.docNumber}</strong></div>
-            <div style="font-size:12px;color:#999;">Date: ${new Date(doc.date).toLocaleDateString()}</div>
-            <div><span class="status">${doc.status}</span></div>
+
+          <!-- Orange Stripe -->
+          <div class="stripe"></div>
+
+          <!-- Content -->
+          <div class="content">
+            <!-- Parties -->
+            <div class="parties">
+              <div class="party-box">
+                <div class="party-label">From (Seller)</div>
+                <div class="party-name">${doc.senderName}</div>
+                <div class="party-sub">SpinTradeHub Member</div>
+              </div>
+              <div class="party-box">
+                <div class="party-label">To (Buyer)</div>
+                <div class="party-name">${doc.receiverName}</div>
+                <div class="party-sub">Valued Customer</div>
+              </div>
+            </div>
+
+            <!-- Items Table -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:40px">#</th>
+                    <th>Description</th>
+                    <th class="td-center" style="width:80px">Qty</th>
+                    <th class="td-right" style="width:130px">Unit Price</th>
+                    <th class="td-right" style="width:130px">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${doc.items.map((item, i) => `
+                    <tr>
+                      <td style="color:#999;font-weight:600">${i + 1}</td>
+                      <td class="item-desc">${item.description}</td>
+                      <td class="td-center">${item.quantity}</td>
+                      <td class="td-right">${doc.currency} ${Number(item.unitPrice).toFixed(2)}</td>
+                      <td class="td-right" style="font-weight:700">${doc.currency} ${Number(item.total).toFixed(2)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Total -->
+            <div class="total-section">
+              <div class="total-label">Total Amount Due</div>
+              <div class="total-amount">${doc.currency} ${doc.totalAmount.toFixed(2)}</div>
+            </div>
+
+            ${doc.notes ? `
+            <div class="notes-box">
+              <strong>📝 Notes & Terms</strong>
+              ${doc.notes}
+            </div>` : ''}
+
+            <!-- Signature -->
+            <div class="signature-area">
+              <div class="sig-box">
+                <div class="sig-label">Authorized Signature</div>
+              </div>
+              <div class="sig-box">
+                <div class="sig-label">Received By</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <img src="${logoUrl}" class="footer-logo" alt="" onerror="this.style.display='none'" />
+            <p class="footer-brand">SpinTradeHub &nbsp;|&nbsp; <span class="tagline-footer">Bearings • Grease • Oil • V-Belts</span></p>
+            <p>📍 United Arab Emirates &nbsp;|&nbsp; 📞 +971541635009 &nbsp;|&nbsp; 📧 support@spintradehub.com</p>
+            <p style="margin-top:6px;color:#aaa;font-size:10px;">This is a computer-generated document from SpinTradeHub platform. &nbsp;|&nbsp; Ref: ${doc.docNumber}</p>
           </div>
         </div>
-        <div class="parties">
-          <div class="party"><h4>From</h4><strong>${doc.senderName}</strong></div>
-          <div class="party"><h4>To</h4><strong>${doc.receiverName}</strong></div>
-        </div>
-        <table>
-          <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
-          ${doc.items.map((item, i) => `<tr><td>${i + 1}</td><td>${item.description}</td><td>${item.quantity}</td><td>${doc.currency} ${item.unitPrice.toFixed(2)}</td><td>${doc.currency} ${item.total.toFixed(2)}</td></tr>`).join('')}
-          <tr class="total-row"><td colspan="4" style="text-align:right;">TOTAL AMOUNT</td><td>${doc.currency} ${doc.totalAmount.toFixed(2)}</td></tr>
-        </table>
-        ${doc.notes ? `<div style="background:#F5F5F5;padding:12px;border-radius:8px;margin-top:20px;"><strong>Notes:</strong> ${doc.notes}</div>` : ''}
-        <div class="footer">
-          <p>SpinTradeHub - B2B Industrial Trading Platform | spintradehub.com</p>
-          <p>Phone: +971541635009 | Email: support@spintradehub.com</p>
-          <p>This is a computer-generated document.</p>
-        </div>
-      </body></html>
+
+        <script>window.onload = () => { window.print(); }</script>
+      </body>
+      </html>
     `;
     const win = window.open('', '_blank');
-    if (win) { win.document.write(printContent); win.document.close(); win.print(); }
+    if (win) { win.document.write(printContent); win.document.close(); }
   };
 
   const filtered = activeTab === 'all' ? documents : documents.filter(d => d.type === activeTab);
