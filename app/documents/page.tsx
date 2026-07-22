@@ -95,7 +95,7 @@ export default function DocumentsPage() {
         docNumber: generateDocNumber(form.type),
         date: Date.now(),
         senderId: user!.uid,
-        senderName: user!.displayName || user!.email || 'User',
+        senderName: user!.displayName || (user!.email ? user!.email.split('@')[0] : 'SpinTradeHub Seller'),
         receiverId: '',
         receiverName: form.receiverName,
         items: form.items.map(i => ({ description: i.description, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice), total: Number(i.total) })),
@@ -418,8 +418,9 @@ export default function DocumentsPage() {
             <div class="parties">
               <div class="party-box">
                 <div class="party-label">From (Seller)</div>
-                <div class="party-name">${doc.senderName}</div>
-                <div class="party-sub">SpinTradeHub Member</div>
+                <div class="party-name">${doc.senderName.includes('@') ? 'SpinTradeHub Seller' : doc.senderName}</div>
+                <div class="party-sub">📧 support@spintradehub.com</div>
+                <div class="party-sub">📞 +971541635009</div>
               </div>
               <div class="party-box">
                 <div class="party-label">To (Buyer)</div>
