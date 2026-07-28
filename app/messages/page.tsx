@@ -27,14 +27,45 @@ function MessagesContent() {
       return;
     }
 
-    loadConversations();
+    let isMounted = true;
+    let unsubscribe: (() => void) | undefined;
 
-    // Set up real-time listener for conversations
-    const unsubscribe = messagingService.listenToConversations(user.uid, (updatedConversations) => {
-      setConversations(updatedConversations);
-    });
+    const initializeConversations = async () => {
+      try {
+        // First, load conversations immediately
+        if (isMounted) setLoading(true);
+        const convs = await messagingService.getConversations(user.uid);
+        
+        if (isMounted) {
+          setConversations(convs);
+          if (convs.length > 0) {
+            selectConversation(convs[0]);
+          }
+          setLoading(false);
+        }
 
-    return () => unsubscribe?.();
+        // Then set up real-time listener for future updates
+        if (isMounted) {
+          unsubscribe = messagingService.listenToConversations(user.uid, (updatedConversations) => {
+            if (isMounted) {
+              setConversations(updatedConversations);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing conversations:', error);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    initializeConversations();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, authLoading, router]);
 
   useEffect(() => {
