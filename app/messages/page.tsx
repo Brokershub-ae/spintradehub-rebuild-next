@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { messagingService } from '@/lib/firebase-messaging';
 import { useToast } from '@/lib/toast-context';
 import Link from 'next/link';
+import EmojiPicker from 'emoji-picker-react';
 
 function MessagesContent() {
   const { user, loading: authLoading } = useAuth();
@@ -21,7 +22,9 @@ function MessagesContent() {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -195,6 +198,25 @@ function MessagesContent() {
   const handleRemoveAttachment = (index: number) => {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
+
+  const handleEmojiSelect = (emojiData: any) => {
+    setMessageText((prevText) => prevText + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
 
   const handleSendMessage = async () => {
     if ((!messageText.trim() && attachments.length === 0) || !selectedConversation) {
@@ -550,6 +572,55 @@ function MessagesContent() {
                   >
                     📎
                   </button>
+
+                  {/* Emoji Button */}
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      disabled={uploading}
+                      style={{
+                        padding: '10px 12px',
+                        backgroundColor: showEmojiPicker ? '#0056D2' : '#E0E0E0',
+                        color: showEmojiPicker ? 'white' : '#333',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        cursor: uploading ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '40px',
+                        transition: 'all 200ms',
+                      }}
+                      title="Add emoji"
+                    >
+                      😊
+                    </button>
+
+                    {/* Emoji Picker Dropdown */}
+                    {showEmojiPicker && (
+                      <div
+                        ref={emojiPickerRef}
+                        style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: 0,
+                          marginBottom: '8px',
+                          zIndex: 1000,
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        }}
+                      >
+                        <EmojiPicker
+                          onEmojiClick={handleEmojiSelect}
+                          height={300}
+                          width={300}
+                          lazyLoadEmojis={true}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Message Input */}
                   <input
