@@ -243,6 +243,17 @@ export const connectionService = {
     } as ConnectionRequest));
   },
 
+  async getUserConnectionRequests(userId: string): Promise<ConnectionRequest[]> {
+    const q = query(collection(db, 'connectionRequests'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as ConnectionRequest))
+      .filter((c) => c.senderId === userId || c.receiverId === userId);
+  },
+
   async acceptConnectionRequest(requestId: string) {
     await updateDoc(doc(db, 'connectionRequests', requestId), {
       status: 'ACCEPTED',
