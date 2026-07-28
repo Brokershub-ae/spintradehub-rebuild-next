@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { messagingService } from '@/lib/firebase-messaging';
 import { useToast } from '@/lib/toast-context';
@@ -10,12 +10,15 @@ import Link from 'next/link';
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
   const { addToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userIdParam = searchParams.get('user');
+  
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     if (authLoading) return;
@@ -26,6 +29,16 @@ export default function MessagesPage() {
 
     loadConversations();
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    // If there's a user parameter and conversations are loaded, find and select that conversation
+    if (userIdParam && conversations.length > 0) {
+      const targetConv = conversations.find(c => c.senderId === userIdParam || c.otherUserId === userIdParam);
+      if (targetConv) {
+        selectConversation(targetConv);
+      }
+    }
+  }, [userIdParam, conversations]);
 
   const loadConversations = async () => {
     try {

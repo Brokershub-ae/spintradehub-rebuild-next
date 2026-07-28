@@ -399,14 +399,31 @@ export default function ProfilePage() {
                   <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Connect with other users to grow your network</p>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
                   {connections.map((conn) => (
-                    <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ width: '50px', height: '50px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
                         {conn.senderName?.charAt(0) || '?'}
                       </div>
                       <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn.senderName}</p>
-                      <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>Connected</p>
+                      <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 8px 0' }}>Connected</p>
+                      <Link 
+                        href={`/messages?user=${conn.senderId}`}
+                        style={{ 
+                          padding: '6px 10px', 
+                          backgroundColor: '#FF8C00', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: '6px', 
+                          cursor: 'pointer', 
+                          fontSize: '11px', 
+                          fontWeight: '600',
+                          textDecoration: 'none',
+                          marginTop: 'auto'
+                        }}
+                      >
+                        💬 Message
+                      </Link>
                     </div>
                   ))}
                 </div>
