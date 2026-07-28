@@ -286,6 +286,13 @@ export const messagingService = {
                 lastMessageTime: msg.timestamp,
                 unreadCount: 0,
               });
+            } else {
+              // Update existing conversation with newer message
+              const conv = conversationMap.get(key)!;
+              if (msg.timestamp > conv.lastMessageTime) {
+                conv.lastMessage = msg.text;
+                conv.lastMessageTime = msg.timestamp;
+              }
             }
           }
 
