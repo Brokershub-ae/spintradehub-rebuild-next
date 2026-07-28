@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { orderService } from '@/lib/firebase-orders';
-import { emailService } from '@/lib/email-service';
 import { useToast } from '@/lib/toast-context';
-import { PaymentModal } from './PaymentModal';
 
 interface BuyModalProps {
   product: any;
@@ -25,8 +23,6 @@ export const BuyModal: React.FC<BuyModalProps> = ({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
 
   const totalPrice = quantity * (product.price || 0);
 
@@ -37,7 +33,7 @@ export const BuyModal: React.FC<BuyModalProps> = ({
     }
 
     if (!deliveryAddress.trim()) {
-      setError('Delivery address is required');
+      setError('Location/Contact details is required');
       return;
     }
 
@@ -45,7 +41,8 @@ export const BuyModal: React.FC<BuyModalProps> = ({
       setLoading(true);
       setError('');
 
-      const newOrderId = await orderService.createOrder({
+      // Create inquiry
+      const inquiryId = await orderService.createOrder({
         buyerId: buyer.uid,
         buyerName: buyer.name || buyer.email,
         buyerEmail: buyer.email,
@@ -61,80 +58,46 @@ export const BuyModal: React.FC<BuyModalProps> = ({
         notes,
       });
 
-      setOrderId(newOrderId);
-      setShowPayment(true);
-
-      // Send order confirmation email
-      await emailService.sendOrderConfirmation(
-        buyer.email,
-        buyer.name || 'Customer',
-        newOrderId,
-        product.productName,
-        quantity,
-        totalPrice,
-        seller.name || 'Seller'
-      );
-
       addToast({
         type: 'success',
-        title: 'Order Created',
-        message: 'Proceeding to payment...',
+        title: 'Inquiry Sent',
+        message: `Your inquiry has been sent to the seller. Inquiry ID: ${inquiryId.substring(0, 8)}`,
+        duration: 4000,
       });
+
+      onSuccess();
+      onClose();
     } catch (err) {
-      console.error('Error creating order:', err);
-      setError('Failed to create order. Please try again.');
+      console.error('Error sending inquiry:', err);
+      setError('Failed to send inquiry. Please try again.');
       addToast({
         type: 'error',
         title: 'Error',
-        message: 'Failed to create order',
+        message: 'Failed to send inquiry',
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePaymentSuccess = async (transactionId: string) => {
-    try {
-      // Update order with payment info
-      if (orderId) {
-        // In production, update order status to CONFIRMED and save transaction ID
-        addToast({
-          type: 'success',
-          title: 'Payment Successful',
-          message: `Order ${orderId.substring(0, 8)} confirmed!`,
-          duration: 4000,
-        });
-      }
 
-      onSuccess();
-      onClose();
-    } catch (err) {
-      console.error('Error finalizing order:', err);
-      addToast({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to finalize order',
-      });
-    }
-  };
 
   return (
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          fontFamily: 'Inter, sans-serif',
-        }}
-        onClick={onClose}
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999,
+        fontFamily: 'Inter, sans-serif',
+      }}
+      onClick={onClose}
       >
         <div
           style={{
@@ -300,21 +263,7 @@ export const BuyModal: React.FC<BuyModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPayment}
-        orderId={orderId || ''}
-        amount={totalPrice}
-        customerName={buyer.name || buyer.email || 'Customer'}
-        customerEmail={buyer.email || ''}
-        onSuccess={handlePaymentSuccess}
-        onClose={() => {
-          setShowPayment(false);
-          setOrderId(null);
-        }}
-      />
-    </>
+    </div>
   );
 };
 
