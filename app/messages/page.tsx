@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { messagingService } from '@/lib/firebase-messaging';
 import { useToast } from '@/lib/toast-context';
 import Link from 'next/link';
 
-export default function MessagesPage() {
+function MessagesContent() {
   const { user, loading: authLoading } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
@@ -300,5 +300,22 @@ export default function MessagesPage() {
         </Link>
       </nav>
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>💬</p>
+            <p style={{ fontSize: '14px', color: '#999' }}>Loading messages...</p>
+          </div>
+        </div>
+      }
+    >
+      <MessagesContent />
+    </Suspense>
   );
 }
