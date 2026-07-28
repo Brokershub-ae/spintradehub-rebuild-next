@@ -23,8 +23,14 @@ function MessagesContent() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [updateTrigger, setUpdateTrigger] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout>();
+  const timestampIntervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (authLoading) return;
@@ -55,12 +61,17 @@ function MessagesContent() {
           unsubscribe = messagingService.listenToConversations(user.uid, (updatedConversations) => {
             if (isMounted) {
               setConversations(updatedConversations);
+              setIsLive(true);
+              setConnectionStatus('connected');
             }
           });
         }
       } catch (error) {
         console.error('Error initializing conversations:', error);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setConnectionStatus('error');
+        }
       }
     };
 
@@ -70,6 +81,9 @@ function MessagesContent() {
       isMounted = false;
       if (unsubscribe) {
         unsubscribe();
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
       }
     };
   }, [user, authLoading, router]);
@@ -91,6 +105,54 @@ function MessagesContent() {
       }
     }
   }, [userIdParam, user, conversations]);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Update timestamps every minute for relative time display
+  useEffect(() => {
+    timestampIntervalRef.current = setInterval(() => {
+      setUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => {
+      if (timestampIntervalRef.current) {
+        clearInterval(timestampIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Fallback polling - refresh messages every 30 seconds if real-time isn't active
+  useEffect(() => {
+    if (selectedConversation && user) {
+      const refreshMessages = async () => {
+        try {
+          const freshMessages = await messagingService.getMessages(
+            user.uid,
+            selectedConversation.otherUserId
+          );
+          setMessages(freshMessages);
+          if (!isLive) {
+            setIsLive(true);
+            setConnectionStatus('reconnected');
+          }
+        } catch (error) {
+          console.warn('Polling update skipped:', error);
+          setConnectionStatus('offline');
+        }
+      };
+
+      pollingIntervalRef.current = setInterval(refreshMessages, 30000); // Poll every 30 seconds
+
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
+  }, [selectedConversation, user, isLive]);
 
   const loadConversations = async () => {
     try {
@@ -289,6 +351,22 @@ function MessagesContent() {
     }
   };
 
+  // Format timestamp as relative time
+  const formatRelativeTime = (timestamp: number) => {
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   if (authLoading || loading) {
     return (
       <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -300,12 +378,46 @@ function MessagesContent() {
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '80px', fontFamily: 'Inter, sans-serif' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '100%', padding: '16px' }}>
+        <div style={{ maxWidth: '100%', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white' }}>
             <span style={{ fontSize: '20px' }}>←</span>
             <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: 'white' }}>💬 Messages</h1>
           </Link>
+          
+          {/* Live Status Indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'white', fontWeight: '500' }}>
+            {connectionStatus === 'connected' && (
+              <>
+                <span style={{ width: '8px', height: '8px', backgroundColor: '#00FF00', borderRadius: '50%', animation: 'pulse 2s infinite' }}></span>
+                <span>🔴 LIVE</span>
+              </>
+            )}
+            {connectionStatus === 'reconnected' && (
+              <>
+                <span style={{ width: '8px', height: '8px', backgroundColor: '#FFA500', borderRadius: '50%' }}></span>
+                <span>Reconnected</span>
+              </>
+            )}
+            {connectionStatus === 'offline' && (
+              <>
+                <span style={{ width: '8px', height: '8px', backgroundColor: '#FF6B6B', borderRadius: '50%' }}></span>
+                <span>Offline Mode</span>
+              </>
+            )}
+            {connectionStatus === 'connecting' && (
+              <>
+                <span style={{ width: '8px', height: '8px', backgroundColor: '#FFD700', borderRadius: '50%', animation: 'pulse 1s infinite' }}></span>
+                <span>Connecting...</span>
+              </>
+            )}
+          </div>
         </div>
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -360,7 +472,7 @@ function MessagesContent() {
                         {convo.otherUserName}
                       </h3>
                       <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>
-                        {new Date(convo.lastMessageTime).toLocaleDateString()}
+                        {formatRelativeTime(convo.lastMessageTime)}
                       </span>
                     </div>
                     <p style={{ fontSize: '12px', color: '#999', margin: '4px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -414,7 +526,7 @@ function MessagesContent() {
                 </Link>
               </div>
 
-              <div style={{ flex: 1, padding: '16px', overflowY: 'auto', backgroundColor: '#FAFAFA', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ flex: 1, padding: '16px', overflowY: 'auto', backgroundColor: '#FAFAFA', display: 'flex', flexDirection: 'column', gap: '10px' }} key={updateTrigger}>
                 {messages.length === 0 ? (
                   <div style={{ textAlign: 'center', color: '#999', padding: '20px' }}>
                     <p>No messages yet. Start the conversation!</p>
@@ -482,12 +594,13 @@ function MessagesContent() {
                         )}
 
                         <p style={{ margin: msg.text || (msg.attachments && msg.attachments.length > 0) ? '4px 0 0 0' : 0, fontSize: '11px', opacity: 0.7 }}>
-                          {new Date(msg.timestamp).toLocaleTimeString()}
+                          {formatRelativeTime(msg.timestamp)}
                         </p>
                       </div>
                     </div>
                   ))
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               <form
