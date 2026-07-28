@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { messagingService } from '@/lib/firebase-messaging';
@@ -18,7 +18,10 @@ function MessagesContent() {
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -133,8 +136,68 @@ function MessagesContent() {
     }
   };
 
+  const handleAttachmentSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    try {
+      setUploading(true);
+      const newAttachments = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Determine attachment type
+        let attachmentType: 'image' | 'pdf' | 'document' = 'document';
+        if (file.type.startsWith('image/')) {
+          attachmentType = 'image';
+        } else if (file.type === 'application/pdf') {
+          attachmentType = 'pdf';
+        }
+
+        // Upload file
+        const { url, name } = await messagingService.uploadAttachment(
+          user!.uid,
+          file,
+          attachmentType
+        );
+
+        newAttachments.push({
+          type: attachmentType,
+          fileName: name,
+          fileUrl: url,
+          size: file.size,
+          uploadedAt: Date.now(),
+        });
+      }
+
+      setAttachments([...attachments, ...newAttachments]);
+      addToast({
+        type: 'success',
+        title: 'Files Uploaded',
+        message: `${newAttachments.length} file(s) ready to send`,
+      });
+    } catch (error) {
+      console.error('Error uploading attachment:', error);
+      addToast({
+        type: 'error',
+        title: 'Upload Error',
+        message: 'Failed to upload file',
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedConversation) {
+    if ((!messageText.trim() && attachments.length === 0) || !selectedConversation) {
       addToast({
         type: 'warning',
         title: 'Warning',
@@ -144,20 +207,24 @@ function MessagesContent() {
     }
 
     try {
+      setUploading(true);
       const sentMsg = await messagingService.sendMessage(
         user!.uid,
         user!.displayName || user!.email || 'User',
         selectedConversation.otherUserId,
         selectedConversation.otherUserName,
-        messageText
+        messageText,
+        attachments.length > 0 ? attachments : undefined
       );
 
       setMessageText('');
+      setAttachments([]);
 
       // Update selected conversation with latest message immediately
+      const lastMsg = messageText || `📎 ${attachments.length} attachment(s)`;
       const updatedConv = {
         ...selectedConversation,
-        lastMessage: messageText,
+        lastMessage: lastMsg,
         lastMessageTime: sentMsg.timestamp,
       };
       setSelectedConversation(updatedConv);
@@ -195,6 +262,8 @@ function MessagesContent() {
         title: 'Error',
         message: 'Failed to send message. Please try again.',
       });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -334,19 +403,66 @@ function MessagesContent() {
                       key={msg.id}
                       style={{
                         alignSelf: msg.senderId === user?.uid ? 'flex-end' : 'flex-start',
-                        maxWidth: '60%',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        backgroundColor: msg.senderId === user?.uid ? '#0056D2' : 'white',
-                        color: msg.senderId === user?.uid ? 'white' : '#333',
-                        fontSize: '13px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        maxWidth: '70%',
                       }}
                     >
-                      <p style={{ margin: 0, wordWrap: 'break-word' }}>{msg.text}</p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', opacity: 0.7 }}>
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </p>
+                      <div
+                        style={{
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          backgroundColor: msg.senderId === user?.uid ? '#0056D2' : 'white',
+                          color: msg.senderId === user?.uid ? 'white' : '#333',
+                          fontSize: '13px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        {msg.text && <p style={{ margin: 0, wordWrap: 'break-word' }}>{msg.text}</p>}
+
+                        {/* Display Attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div style={{ marginTop: msg.text ? '8px' : 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {msg.attachments.map((att: any, idx: number) => (
+                              <a
+                                key={idx}
+                                href={att.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 10px',
+                                  backgroundColor: msg.senderId === user?.uid ? 'rgba(255,255,255,0.2)' : '#E3F2FD',
+                                  borderRadius: '4px',
+                                  textDecoration: 'none',
+                                  color: msg.senderId === user?.uid ? 'white' : '#0056D2',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  maxWidth: '100%',
+                                  transition: 'all 200ms',
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.backgroundColor = msg.senderId === user?.uid ? 'rgba(255,255,255,0.3)' : '#BBE1FF';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.backgroundColor = msg.senderId === user?.uid ? 'rgba(255,255,255,0.2)' : '#E3F2FD';
+                                }}
+                              >
+                                <span>
+                                  {att.type === 'image' ? '🖼️' : att.type === 'pdf' ? '📄' : '📋'}
+                                </span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {att.fileName}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        <p style={{ margin: msg.text || (msg.attachments && msg.attachments.length > 0) ? '4px 0 0 0' : 0, fontSize: '11px', opacity: 0.7 }}>
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
                   ))
                 )}
@@ -359,12 +475,89 @@ function MessagesContent() {
                 }}
                 style={{ padding: '16px', borderTop: '1px solid #E0E0E0', backgroundColor: 'white' }}
               >
+                {/* Attachments Display */}
+                {attachments.length > 0 && (
+                  <div style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {attachments.map((att, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backgroundColor: '#E3F2FD',
+                          padding: '6px 10px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          color: '#333',
+                        }}
+                      >
+                        <span>
+                          {att.type === 'image' ? '🖼️' : att.type === 'pdf' ? '📄' : '📋'}
+                          {' ' + att.fileName.substring(0, 15)}
+                          {att.fileName.length > 15 ? '...' : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(idx)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0056D2',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            padding: 0,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input Area */}
                 <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Hidden File Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf"
+                    onChange={handleAttachmentSelect}
+                    style={{ display: 'none' }}
+                  />
+
+                  {/* Attachment Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      padding: '10px 12px',
+                      backgroundColor: uploading ? '#CCC' : '#E0E0E0',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      cursor: uploading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '40px',
+                    }}
+                    title="Attach files (images, PDF)"
+                  >
+                    📎
+                  </button>
+
+                  {/* Message Input */}
                   <input
                     type="text"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type your message..."
+                    disabled={uploading}
                     style={{
                       flex: 1,
                       padding: '10px 12px',
@@ -373,26 +566,31 @@ function MessagesContent() {
                       fontSize: '13px',
                       outline: 'none',
                       fontFamily: 'inherit',
+                      backgroundColor: uploading ? '#F5F5F5' : 'white',
+                      color: uploading ? '#CCC' : '#333',
                     }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')}
+                    onFocus={(e) => !uploading && (e.currentTarget.style.borderColor = '#0056D2')}
                     onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')}
                   />
+
+                  {/* Send Button */}
                   <button
                     type="submit"
+                    disabled={uploading}
                     style={{
                       padding: '10px 24px',
-                      backgroundColor: '#FF8C00',
+                      backgroundColor: uploading ? '#CCC' : '#FF8C00',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
                       fontSize: '13px',
                       fontWeight: '600',
-                      cursor: 'pointer',
+                      cursor: uploading ? 'not-allowed' : 'pointer',
                     }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
+                    onMouseOver={(e) => !uploading && (e.currentTarget.style.background = '#E67E00')}
+                    onMouseOut={(e) => !uploading && (e.currentTarget.style.background = '#FF8C00')}
                   >
-                    Send
+                    {uploading ? 'Uploading...' : 'Send'}
                   </button>
                 </div>
               </form>

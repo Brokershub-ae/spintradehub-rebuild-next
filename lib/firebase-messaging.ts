@@ -16,7 +16,19 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from './firebase';
 import { userService } from './firebase-service';
+
+export interface Attachment {
+  id?: string;
+  type: 'image' | 'pdf' | 'document';
+  fileName: string;
+  fileUrl: string;
+  documentType?: 'quotation' | 'invoice' | 'bill'; // For document type
+  size?: number;
+  uploadedAt?: number;
+}
 
 export interface Message {
   id?: string;
@@ -27,6 +39,7 @@ export interface Message {
   text: string;
   timestamp: number;
   read: boolean;
+  attachments?: Attachment[];
 }
 
 export interface Conversation {
@@ -41,14 +54,38 @@ export interface Conversation {
 
 export const messagingService = {
   /**
-   * Send a message
+   * Upload attachment file
+   */
+  async uploadAttachment(
+    userId: string,
+    file: File,
+    attachmentType: 'image' | 'pdf' | 'document'
+  ): Promise<{ url: string; name: string }> {
+    try {
+      const fileName = `${Date.now()}-${file.name}`;
+      const storagePath = `messages/${userId}/${attachmentType}s/${fileName}`;
+      const storageRef = ref(storage, storagePath);
+      
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      
+      return { url, name: file.name };
+    } catch (error) {
+      console.error('Error uploading attachment:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Send a message with optional attachments
    */
   async sendMessage(
     senderId: string,
     senderName: string,
     receiverId: string,
     receiverName: string,
-    text: string
+    text: string,
+    attachments?: Attachment[]
   ) {
     try {
       const docRef = await addDoc(collection(db, 'messages'), {
@@ -59,8 +96,9 @@ export const messagingService = {
         text,
         timestamp: Date.now(),
         read: false,
+        attachments: attachments || [],
       });
-      return { id: docRef.id, senderId, senderName, receiverId, receiverName, text, timestamp: Date.now(), read: false };
+      return { id: docRef.id, senderId, senderName, receiverId, receiverName, text, timestamp: Date.now(), read: false, attachments };
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
