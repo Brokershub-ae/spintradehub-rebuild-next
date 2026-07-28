@@ -32,13 +32,21 @@ function MessagesContent() {
 
   useEffect(() => {
     // If there's a user parameter and conversations are loaded, find and select that conversation
-    if (userIdParam && conversations.length > 0) {
+    if (userIdParam && user) {
+      // First check if conversation already exists
       const targetConv = conversations.find(c => c.senderId === userIdParam || c.otherUserId === userIdParam);
       if (targetConv) {
         selectConversation(targetConv);
+      } else {
+        // No existing conversation, create one
+        messagingService.getOrCreateConversation(user.uid, userIdParam).then(conv => {
+          selectConversation(conv);
+        }).catch(err => {
+          console.error('Error creating conversation:', err);
+        });
       }
     }
-  }, [userIdParam, conversations]);
+  }, [userIdParam, user, conversations]);
 
   const loadConversations = async () => {
     try {

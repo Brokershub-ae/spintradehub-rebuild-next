@@ -12,8 +12,11 @@ import {
   orderBy,
   limit,
   onSnapshot,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { userService } from './firebase-service';
 
 export interface Message {
   id?: string;
@@ -196,6 +199,57 @@ export const messagingService = {
     } catch (error) {
       console.error('Error setting up message listener:', error);
       return undefined;
+    }
+  },
+
+  /**
+   * Get or create a conversation with a specific user
+   * Used when clicking message button on connected users
+   */
+  async getOrCreateConversation(
+    currentUserId: string,
+    otherUserId: string
+  ): Promise<Conversation> {
+    try {
+      // First try to find existing conversation
+      const messages = await this.getMessages(currentUserId, otherUserId);
+      if (messages.length > 0) {
+        // Conversation exists, return it
+        const lastMsg = messages[messages.length - 1];
+        return {
+          id: [currentUserId, otherUserId].sort().join('_'),
+          userId: currentUserId,
+          otherUserId,
+          otherUserName: lastMsg.receiverId === otherUserId ? lastMsg.receiverName : lastMsg.senderName,
+          lastMessage: lastMsg.text,
+          lastMessageTime: lastMsg.timestamp,
+          unreadCount: 0,
+        };
+      }
+
+      // No existing conversation, fetch the other user's profile
+      const userProfile = await userService.getUserProfile(otherUserId);
+      return {
+        id: [currentUserId, otherUserId].sort().join('_'),
+        userId: currentUserId,
+        otherUserId,
+        otherUserName: userProfile?.name || 'User',
+        lastMessage: '',
+        lastMessageTime: Date.now(),
+        unreadCount: 0,
+      };
+    } catch (error) {
+      console.error('Error getting/creating conversation:', error);
+      // Return a minimal conversation object
+      return {
+        id: [currentUserId, otherUserId].sort().join('_'),
+        userId: currentUserId,
+        otherUserId,
+        otherUserName: 'User',
+        lastMessage: '',
+        lastMessageTime: Date.now(),
+        unreadCount: 0,
+      };
     }
   },
 };
