@@ -28,6 +28,13 @@ function MessagesContent() {
     }
 
     loadConversations();
+
+    // Set up real-time listener for conversations
+    const unsubscribe = messagingService.listenToConversations(user.uid, (updatedConversations) => {
+      setConversations(updatedConversations);
+    });
+
+    return () => unsubscribe?.();
   }, [user, authLoading, router]);
 
   useEffect(() => {

@@ -252,4 +252,75 @@ export const messagingService = {
       };
     }
   },
+
+  /**
+   * Listen to conversations in real-time
+   * Updates whenever new messages arrive or are sent
+   */
+  listenToConversations(
+    userId: string,
+    callback: (conversations: Conversation[]) => void
+  ) {
+    try {
+      const q = query(
+        collection(db, 'messages'),
+        orderBy('timestamp', 'desc')
+      );
+
+      return onSnapshot(q, (snapshot) => {
+        const conversationMap = new Map<string, Conversation>();
+
+        snapshot.docs.forEach((doc) => {
+          const msg = doc.data() as Message;
+
+          // Process if user is sender
+          if (msg.senderId === userId) {
+            const key = [userId, msg.receiverId].sort().join('_');
+            if (!conversationMap.has(key)) {
+              conversationMap.set(key, {
+                id: key,
+                userId,
+                otherUserId: msg.receiverId,
+                otherUserName: msg.receiverName,
+                lastMessage: msg.text,
+                lastMessageTime: msg.timestamp,
+                unreadCount: 0,
+              });
+            }
+          }
+
+          // Process if user is receiver
+          if (msg.receiverId === userId) {
+            const key = [userId, msg.senderId].sort().join('_');
+            if (!conversationMap.has(key)) {
+              conversationMap.set(key, {
+                id: key,
+                userId,
+                otherUserId: msg.senderId,
+                otherUserName: msg.senderName,
+                lastMessage: msg.text,
+                lastMessageTime: msg.timestamp,
+                unreadCount: msg.read ? 0 : 1,
+              });
+            } else {
+              const conv = conversationMap.get(key)!;
+              if (!msg.read) conv.unreadCount++;
+              if (msg.timestamp > conv.lastMessageTime) {
+                conv.lastMessage = msg.text;
+                conv.lastMessageTime = msg.timestamp;
+              }
+            }
+          }
+        });
+
+        const conversations = Array.from(conversationMap.values()).sort(
+          (a, b) => b.lastMessageTime - a.lastMessageTime
+        );
+        callback(conversations);
+      });
+    } catch (error) {
+      console.error('Error setting up conversations listener:', error);
+      return undefined;
+    }
+  },
 };
