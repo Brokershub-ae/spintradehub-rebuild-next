@@ -113,7 +113,7 @@ function MessagesContent() {
     }
 
     try {
-      await messagingService.sendMessage(
+      const sentMsg = await messagingService.sendMessage(
         user!.uid,
         user!.displayName || user!.email || 'User',
         selectedConversation.otherUserId,
@@ -122,19 +122,41 @@ function MessagesContent() {
       );
 
       setMessageText('');
+
+      // Update selected conversation with latest message immediately
+      const updatedConv = {
+        ...selectedConversation,
+        lastMessage: messageText,
+        lastMessageTime: sentMsg.timestamp,
+      };
+      setSelectedConversation(updatedConv);
+
+      // Update or add conversation to list
+      setConversations((prevConvs) => {
+        const convExists = prevConvs.find((c) => c.id === selectedConversation.id);
+        if (convExists) {
+          // Update existing conversation and move to top
+          const updated = prevConvs.map((c) =>
+            c.id === selectedConversation.id ? updatedConv : c
+          );
+          return updated.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+        } else {
+          // Add new conversation to list
+          return [updatedConv, ...prevConvs].sort(
+            (a, b) => b.lastMessageTime - a.lastMessageTime
+          );
+        }
+      });
+
+      // Refresh messages
+      const msgs = await messagingService.getMessages(user!.uid, selectedConversation.otherUserId);
+      setMessages(msgs);
+
       addToast({
         type: 'success',
         title: 'Message Sent',
         message: `Message sent to ${selectedConversation.otherUserName}`,
       });
-
-      // Reload messages
-      const msgs = await messagingService.getMessages(user!.uid, selectedConversation.otherUserId);
-      setMessages(msgs);
-
-      // Reload conversations to show the message in the list
-      const convs = await messagingService.getConversations(user!.uid);
-      setConversations(convs);
     } catch (error) {
       console.error('Error sending message:', error);
       addToast({
@@ -183,32 +205,62 @@ function MessagesContent() {
                     cursor: 'pointer',
                     backgroundColor: selectedConversation?.id === convo.id ? '#F0F7FF' : 'white',
                     transition: 'all 200ms',
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'flex-start',
                   }}
                   onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F5')}
                   onMouseOut={(e) => (e.currentTarget.style.backgroundColor = selectedConversation?.id === convo.id ? '#F0F7FF' : 'white')}
                 >
-                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: '0 0 4px 0' }}>
-                    {convo.otherUserName}
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#999', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {convo.lastMessage}
-                  </p>
-                  {convo.unreadCount > 0 && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        marginTop: '6px',
-                        padding: '2px 8px',
-                        backgroundColor: '#FF8C00',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      {convo.unreadCount} new
-                    </span>
-                  )}
+                  {/* User Avatar Circle */}
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: '#0056D2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {convo.otherUserName?.charAt(0).toUpperCase() || '?'}
+                  </div>
+
+                  {/* Conversation Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0 }}>
+                        {convo.otherUserName}
+                      </h3>
+                      <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>
+                        {new Date(convo.lastMessageTime).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#999', margin: '4px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {convo.lastMessage || '(no messages yet)'}
+                    </p>
+                    {convo.unreadCount > 0 && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '6px',
+                          padding: '2px 8px',
+                          backgroundColor: '#FF8C00',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {convo.unreadCount} new
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -218,10 +270,26 @@ function MessagesContent() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {selectedConversation ? (
             <>
-              <div style={{ padding: '16px', borderBottom: '1px solid #E0E0E0', backgroundColor: 'white' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid #E0E0E0', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>
                   {selectedConversation.otherUserName}
                 </h2>
+                <Link
+                  href={`/profile/${selectedConversation.otherUserId}`}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#0056D2',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    border: 'none',
+                  }}
+                >
+                  👤 View Profile
+                </Link>
               </div>
 
               <div style={{ flex: 1, padding: '16px', overflowY: 'auto', backgroundColor: '#FAFAFA', display: 'flex', flexDirection: 'column', gap: '10px' }}>
