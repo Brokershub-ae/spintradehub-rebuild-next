@@ -41,7 +41,6 @@ export const BuyModal: React.FC<BuyModalProps> = ({
       setLoading(true);
       setError('');
 
-      // Create inquiry
       const inquiryId = await orderService.createOrder({
         buyerId: buyer.uid,
         buyerName: buyer.name || buyer.email,
@@ -61,7 +60,7 @@ export const BuyModal: React.FC<BuyModalProps> = ({
       addToast({
         type: 'success',
         title: 'Inquiry Sent',
-        message: `Your inquiry has been sent to the seller. Inquiry ID: ${inquiryId.substring(0, 8)}`,
+        message: `Your inquiry has been sent. ID: ${inquiryId.substring(0, 8)}`,
         duration: 4000,
       });
 
@@ -80,8 +79,6 @@ export const BuyModal: React.FC<BuyModalProps> = ({
     }
   };
 
-
-
   return (
     <div
       style={{
@@ -98,173 +95,171 @@ export const BuyModal: React.FC<BuyModalProps> = ({
         fontFamily: 'Inter, sans-serif',
       }}
       onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'white',
+          borderRadius: '8px',
+          padding: '30px',
+          maxWidth: '500px',
+          width: '90%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h2 style={{ color: '#0056D2', marginTop: 0, marginBottom: '20px' }}>
-            � Send Inquiry: {product.productName}
-          </h2>
+        <h2 style={{ margin: '0 0 20px 0', fontSize: '20px', color: '#333' }}>
+          Send Inquiry
+        </h2>
 
-          {error && (
-            <div
-              style={{
-                background: '#FFEBEE',
-                color: '#C62828',
-                padding: '12px',
-                borderRadius: '6px',
-                marginBottom: '20px',
-                fontSize: '14px',
-              }}
-            >
-              ❌ {error}
-            </div>
-          )}
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
-              📦 Quantity
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #DDD',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-              }}
-            />
-            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#999' }}>
-              Price per unit: AED {product.price || 0}
-            </p>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
-              📍 Location / Contact Details *
-            </label>
-            <textarea
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              placeholder="Your location or preferred way to contact you"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #DDD',
-                borderRadius: '6px',
-                fontSize: '14px',
-                minHeight: '80px',
-                fontFamily: 'Inter, sans-serif',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
-              📝 Inquiry Message (Optional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Tell the seller what you need, specifications, pricing requirements, etc."
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #DDD',
-                borderRadius: '6px',
-                fontSize: '14px',
-                minHeight: '60px',
-                fontFamily: 'Inter, sans-serif',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          {/* Summary */}
+        {error && (
           <div
             style={{
-              background: '#F5F5F5',
-              padding: '15px',
+              background: '#FFE5E5',
+              border: '1px solid #FF6B6B',
+              color: '#C92A2A',
+              padding: '10px',
               borderRadius: '6px',
-              marginBottom: '20px',
+              marginBottom: '15px',
+              fontSize: '14px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Subtotal:</span>
-              <span>AED {totalPrice.toLocaleString()}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Shipping:</span>
-              <span>Negotiable</span>
-            </div>
-            <div
-              style={{
-                borderTop: '1px solid #DDD',
-                paddingTop: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontWeight: 600,
-                fontSize: '16px',
-                color: '#FF8C00',
-              }}
-            >
-              <span>Total:</span>
-              <span>AED {totalPrice.toLocaleString()}</span>
-            </div>
+            {error}
           </div>
+        )}
 
-          {/* Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <button
-              onClick={onClose}
-              style={{
-                padding: '12px',
-                background: '#F0F0F0',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                color: '#333',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              style={{
-                padding: '12px',
-                background: loading ? '#CCC' : '#0056D2',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              {loading ? '⏳ Sending...' : '📧 Send Inquiry'}
-            </button>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
+            Product: {product.productName}
+          </label>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
+            Quantity
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #DDD',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontFamily: 'Inter, sans-serif',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
+            Location / Contact Details *
+          </label>
+          <textarea
+            value={deliveryAddress}
+            onChange={(e) => setDeliveryAddress(e.target.value)}
+            placeholder="Enter your location and contact information"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #DDD',
+              borderRadius: '6px',
+              fontSize: '14px',
+              minHeight: '60px',
+              fontFamily: 'Inter, sans-serif',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
+            Inquiry Message (Optional)
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add any additional details about your inquiry"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #DDD',
+              borderRadius: '6px',
+              fontSize: '14px',
+              minHeight: '60px',
+              fontFamily: 'Inter, sans-serif',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            background: '#F5F5F5',
+            padding: '15px',
+            borderRadius: '6px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span>Subtotal:</span>
+            <span>AED {totalPrice.toLocaleString()}</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span>Shipping:</span>
+            <span>Negotiable</span>
+          </div>
+          <div
+            style={{
+              borderTop: '1px solid #DDD',
+              paddingTop: '8px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontWeight: 600,
+            }}
+          >
+            <span>Total:</span>
+            <span>AED {totalPrice.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px',
+              background: '#F0F0F0',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              color: '#333',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              padding: '12px',
+              background: loading ? '#CCC' : '#0056D2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {loading ? 'Sending...' : 'Send Inquiry'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
-
-
