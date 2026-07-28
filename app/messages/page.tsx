@@ -71,6 +71,7 @@ function MessagesContent() {
   const selectConversation = async (conv: any) => {
     setSelectedConversation(conv);
     try {
+      // Get fresh messages for this conversation
       const msgs = await messagingService.getMessages(user!.uid, conv.otherUserId);
       setMessages(msgs);
 
@@ -86,6 +87,11 @@ function MessagesContent() {
       return () => unsubscribe?.();
     } catch (error) {
       console.error('Error loading messages:', error);
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load messages',
+      });
     }
   };
 
@@ -118,12 +124,16 @@ function MessagesContent() {
       // Reload messages
       const msgs = await messagingService.getMessages(user!.uid, selectedConversation.otherUserId);
       setMessages(msgs);
+
+      // Reload conversations to show the message in the list
+      const convs = await messagingService.getConversations(user!.uid);
+      setConversations(convs);
     } catch (error) {
       console.error('Error sending message:', error);
       addToast({
         type: 'error',
         title: 'Error',
-        message: 'Failed to send message',
+        message: 'Failed to send message. Please try again.',
       });
     }
   };
