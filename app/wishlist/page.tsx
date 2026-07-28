@@ -87,7 +87,7 @@ export default function WishlistPage() {
     addToast({
       type: 'info',
       title: 'Tip',
-      message: 'Selected items are ready. Click "Buy Now" on any product.',
+      message: 'Selected items are ready. Click "Send Inquiry" on any product.',
     });
   };
 

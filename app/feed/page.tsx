@@ -150,7 +150,7 @@ export default function FeedPage() {
     setFilteredProducts(filtered);
   }, [products, searchQuery, selectedCategory, sortBy, minRating, maxPrice]);
 
-  const handleBuyClick = async (product: any) => {
+  const handleInquiryClick = async (product: any) => {
     try {
       // Get seller ID with fallback
       const sellerId = product.creatorId || product.userId || product.seller;
@@ -360,7 +360,7 @@ export default function FeedPage() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      handleBuyClick(product);
+                      handleInquiryClick(product);
                     }}
                     style={{
                       flex: 1,
@@ -374,7 +374,7 @@ export default function FeedPage() {
                       fontSize: '13px',
                     }}
                   >
-                    🛒 Buy Now
+                    � Send Inquiry
                   </button>
                 </div>
               </div>

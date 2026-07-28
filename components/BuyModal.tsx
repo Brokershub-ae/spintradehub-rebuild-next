@@ -150,7 +150,7 @@ export const BuyModal: React.FC<BuyModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           <h2 style={{ color: '#0056D2', marginTop: 0, marginBottom: '20px' }}>
-            🛒 Order: {product.productName}
+            � Send Inquiry: {product.productName}
           </h2>
 
           {error && (
@@ -193,12 +193,12 @@ export const BuyModal: React.FC<BuyModalProps> = ({
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
-              📍 Delivery Address *
+              📍 Location / Contact Details *
             </label>
             <textarea
               value={deliveryAddress}
               onChange={(e) => setDeliveryAddress(e.target.value)}
-              placeholder="Enter your delivery address"
+              placeholder="Your location or preferred way to contact you"
               style={{
                 width: '100%',
                 padding: '10px',
@@ -214,12 +214,12 @@ export const BuyModal: React.FC<BuyModalProps> = ({
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#333' }}>
-              📝 Special Notes (Optional)
+              📝 Inquiry Message (Optional)
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any special requests or notes?"
+              placeholder="Tell the seller what you need, specifications, pricing requirements, etc."
               style={{
                 width: '100%',
                 padding: '10px',
@@ -295,7 +295,7 @@ export const BuyModal: React.FC<BuyModalProps> = ({
                 fontWeight: 600,
               }}
             >
-              {loading ? '⏳ Creating...' : '💳 Proceed to Payment'}
+              {loading ? '⏳ Sending...' : '📧 Send Inquiry'}
             </button>
           </div>
         </div>
