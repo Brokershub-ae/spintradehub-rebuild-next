@@ -397,40 +397,52 @@ export default function ProfilePage() {
                   <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>🤝</p>
                   <p style={{ fontSize: '14px', margin: 0 }}>No connections yet</p>
                   <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Connect with other users to grow your network</p>
+                  <Link href="/network" style={{ display: 'inline-block', marginTop: '16px', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
+                    🤝 Find Users to Connect
+                  </Link>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-                  {connections.map((conn) => (
-                    <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '12px', borderRadius: '8px', textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ width: '50px', height: '50px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
-                        {conn.senderName?.charAt(0) || '?'}
-                      </div>
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn.senderName}</p>
-                      <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 8px 0' }}>Connected</p>
-                      <Link 
-                        href={`/messages?user=${conn.senderId}`}
-                        style={{ 
-                          padding: '6px 10px', 
-                          backgroundColor: '#FF8C00', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: '6px', 
-                          cursor: 'pointer', 
-                          fontSize: '11px', 
-                          fontWeight: '600',
-                          textDecoration: 'none',
-                          marginTop: 'auto'
-                        }}
-                      >
-                        💬 Message
-                      </Link>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                    {connections.map((conn) => {
+                      const connectedUser = conn.senderId === user?.uid ? conn.receiverId : conn.senderId;
+                      const connectedName = conn.senderId === user?.uid ? conn.receiverName : conn.senderName;
+                      return (
+                        <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '16px', borderRadius: '8px', textAlign: 'center', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                          <div style={{ width: '60px', height: '60px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px', fontWeight: 'bold' }}>
+                            {connectedName?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                          <p style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{connectedName || 'Connected User'}</p>
+                          <p style={{ fontSize: '12px', color: '#999', margin: '4px 0 12px 0' }}>✓ Connected</p>
+                          <Link 
+                            href={`/messages?user=${connectedUser}`}
+                            style={{ 
+                              padding: '8px 12px', 
+                              backgroundColor: '#FF8C00', 
+                              color: 'white', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              cursor: 'pointer', 
+                              fontSize: '12px', 
+                              fontWeight: '600',
+                              textDecoration: 'none',
+                              marginTop: 'auto',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#FF7700')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#FF8C00')}
+                          >
+                            💬 Message
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Link href="/network" style={{ display: 'inline-block', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
+                    🤝 Add More Connections
+                  </Link>
+                </>
               )}
-              <Link href="/network" style={{ display: 'inline-block', marginTop: '16px', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
-                🤝 Discover More Users
-              </Link>
             </div>
           )}
 
