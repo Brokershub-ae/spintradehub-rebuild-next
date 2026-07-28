@@ -408,29 +408,33 @@ export default function ProfilePage() {
                       const connectedUser = conn.senderId === user?.uid ? conn.receiverId : conn.senderId;
                       const connectedName = conn.senderId === user?.uid ? conn.receiverName : conn.senderName;
                       return (
-                        <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '16px', borderRadius: '8px', textAlign: 'center', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div key={conn.id} style={{ backgroundColor: '#F5F5F5', padding: '16px', borderRadius: '8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                           <div style={{ width: '60px', height: '60px', backgroundColor: '#0056D2', borderRadius: '50%', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px', fontWeight: 'bold' }}>
                             {connectedName?.charAt(0).toUpperCase() || '?'}
                           </div>
-                          <p style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{connectedName || 'Connected User'}</p>
-                          <p style={{ fontSize: '12px', color: '#999', margin: '4px 0 12px 0' }}>✓ Connected</p>
+                          <p style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>{connectedName || 'Connected User'}</p>
+                          <p style={{ fontSize: '12px', color: '#999', margin: '0 0 12px 0' }}>✓ Connected</p>
                           <Link 
                             href={`/messages?user=${connectedUser}`}
                             style={{ 
-                              padding: '8px 12px', 
+                              display: 'inline-block',
+                              padding: '8px 16px', 
                               backgroundColor: '#FF8C00', 
                               color: 'white', 
-                              border: 'none', 
                               borderRadius: '6px', 
-                              cursor: 'pointer', 
+                              textDecoration: 'none',
                               fontSize: '12px', 
                               fontWeight: '600',
-                              textDecoration: 'none',
-                              marginTop: 'auto',
-                              transition: 'background-color 0.2s'
+                              transition: 'all 0.2s ease'
                             }}
-                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#FF7700')}
-                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#FF8C00')}
+                            onMouseOver={(e) => {
+                              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF7700';
+                              (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.05)';
+                            }}
+                            onMouseOut={(e) => {
+                              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF8C00';
+                              (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)';
+                            }}
                           >
                             💬 Message
                           </Link>
