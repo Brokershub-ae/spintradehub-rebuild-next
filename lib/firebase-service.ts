@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './firebase';
+import { notificationService } from './firebase-notifications';
 
 export interface User {
   uid: string;
@@ -104,6 +105,21 @@ export const authService = {
       ...userData,
       email,
     });
+
+    // Notify all existing users about the new signup
+    try {
+      await notificationService.notifyAllUsersAboutNewSignup({
+        uid,
+        name: userData.name,
+        username: userData.username,
+        role: userData.role,
+        email,
+        region: userData.region,
+      });
+    } catch (error) {
+      console.warn('Failed to send signup notifications:', error);
+      // Don't throw - signup should succeed even if notifications fail
+    }
 
     return userCredential.user;
   },
