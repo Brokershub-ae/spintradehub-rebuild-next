@@ -7,19 +7,23 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 import { Product } from './firebase-service';
 
-// Keywords that indicate user is asking about products/suppliers/prices
-const PRODUCT_QUERY_KEYWORDS = [
-  'cheapest', 'cheap', 'best rate', 'best price', 'lowest price', 'affordable',
-  'distributor', 'supplier', 'seller', 'vendor', 'manufacturer',
-  'bearing', 'grease', 'oil', 'motor', 'pump', 'valve', 'pipe', 'bolt', 'gear',
-  'buy', 'purchase', 'available', 'stock', 'rate', 'price', 'cost', 'quote',
-  'quotation', 'who sells', 'where to buy', 'find', 'looking for',
-  'industrial', 'product', 'spare parts', 'machinery',
+// Only match when user is clearly asking about finding/buying a specific product or supplier
+const PRODUCT_QUERY_PATTERNS = [
+  /who sells/i,
+  /where (to buy|can i (buy|find|get))/i,
+  /find (me |a |the )?(supplier|seller|distributor|vendor|manufacturer)/i,
+  /best (supplier|seller|rate|price|deal) (for|on)/i,
+  /cheapest (supplier|seller|price|rate|bearing|grease|oil|pump|valve|motor|belt|gear)/i,
+  /lowest price (for|on)/i,
+  /(bearing|grease|lubricant|v.belt|engine oil|motor oil|hydraulic oil|pump|valve|spare part|machinery) (supplier|seller|distributor|available|price|rate|cost)/i,
+  /looking for (a |the )?(supplier|seller|distributor|bearing|grease|oil|pump)/i,
+  /need (a |to buy |to find )?(supplier|bearing|grease|oil|pump|valve|motor|belt)/i,
+  /i want to buy/i,
+  /show me (products|suppliers|sellers)/i,
 ];
 
 export function isProductQuery(message: string): boolean {
-  const lower = message.toLowerCase();
-  return PRODUCT_QUERY_KEYWORDS.some(keyword => lower.includes(keyword));
+  return PRODUCT_QUERY_PATTERNS.some(pattern => pattern.test(message));
 }
 
 export async function searchPostsForQuery(userMessage: string): Promise<Product[]> {
