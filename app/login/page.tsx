@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/firebase-service';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -11,7 +12,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect once auth state confirms user is logged in
+  useEffect(() => {
+    if (loginAttempted && !authLoading && user) {
+      router.replace('/feed');
+    }
+  }, [user, authLoading, loginAttempted, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,10 +30,9 @@ export default function LoginPage() {
 
     try {
       await authService.login(email, password);
-      router.push('/feed');
+      setLoginAttempted(true);
     } catch (err: any) {
       setError(err.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };
@@ -104,7 +113,7 @@ export default function LoginPage() {
                 onMouseOver={(e) => !loading && (e.currentTarget.style.background = '#E67E00')}
                 onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loginAttempted && !error ? 'Redirecting...' : loading ? 'Logging in...' : 'Login'}
               </button>
             </form>
 
