@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Build context with real product data if available
     let productContext = '';
@@ -82,7 +82,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ text });
   } catch (error: any) {
-    console.error('Gemini API error:', error);
+    console.error('Gemini API error:', error?.message || error);
+    const msg = error?.message || '';
+    if (msg.includes('API_KEY') || msg.includes('api key') || msg.includes('INVALID')) {
+      return NextResponse.json({ error: '❌ Invalid Gemini API key. Please check Vercel environment variables.' }, { status: 500 });
+    }
+    if (msg.includes('quota') || msg.includes('QUOTA')) {
+      return NextResponse.json({ error: '⚠️ Gemini free quota exceeded. Try again later.' }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'AI service temporarily unavailable. Please try again.' },
       { status: 500 }
