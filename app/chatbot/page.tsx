@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getChatbotResponse } from '@/lib/chatbot-knowledge-base';
+import { isProductQuery, searchPostsForQuery, formatProductResults } from '@/lib/chatbot-product-search';
 import Link from 'next/link';
 
 interface Message {
@@ -16,11 +17,11 @@ interface Message {
 
 
 const QUICK_QUESTIONS = [
+  "Who sells bearings at cheapest rate?",
+  "Find best grease supplier",
   "How to post a product?",
-  "How to buy products?",
-  "Payment & Money inquiries",
   "How to connect with suppliers?",
-  "Need support?",
+  "Payment & Money inquiries",
   "About SpinTradeHub",
 ];
 
@@ -81,6 +82,24 @@ What would you like to know?`,
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+
+    // Check if user is asking about products/suppliers/prices → search live Firestore
+    if (isProductQuery(text)) {
+      searchPostsForQuery(text).then(posts => {
+        const responseText = formatProductResults(posts, text);
+        const botMsg: Message = {
+          id: Date.now() + 1,
+          role: 'bot',
+          text: responseText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          category: 'product-search',
+          confidence: 1,
+        };
+        setMessages(prev => [...prev, botMsg]);
+        setIsTyping(false);
+      });
+      return;
+    }
 
     // Use intelligent response matching with confidence scoring
     setTimeout(() => {
