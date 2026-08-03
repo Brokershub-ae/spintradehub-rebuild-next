@@ -71,6 +71,7 @@ export const listenToAllPosts = (callback: (posts: any[]) => void) => {
     },
     (error) => {
       console.error('Error listening to posts:', error);
+      callback([]); // unblock loading on error
     }
   );
 

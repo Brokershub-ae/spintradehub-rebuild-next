@@ -40,15 +40,20 @@ export default function FeedPage() {
 
     setLoading(true);
 
+    // Safety timeout — never stay stuck on loading more than 8 seconds
+    const timeout = setTimeout(() => setLoading(false), 8000);
+
     // Real-time listener for all posts
     const unsubscribePosts = listenToAllPosts((posts) => {
       setProducts(posts);
       setLoading(false);
+      clearTimeout(timeout);
     });
 
     // Cleanup listener on unmount
     return () => {
       unsubscribePosts?.();
+      clearTimeout(timeout);
     };
   }, [user, authLoading, router]);
 
