@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { getChatbotResponse } from '@/lib/chatbot-knowledge-base';
-import { isProductQuery, searchPostsForQuery, formatProductResults } from '@/lib/chatbot-product-search';
+import { isProductQuery, searchPostsForQuery } from '@/lib/chatbot-product-search';
 import Link from 'next/link';
 
 interface Message {
@@ -11,18 +10,15 @@ interface Message {
   role: 'user' | 'bot';
   text: string;
   time: string;
-  category?: string;
-  confidence?: number;
 }
-
 
 const QUICK_QUESTIONS = [
   "Who sells bearings at cheapest rate?",
-  "Find best grease supplier",
+  "Find best grease supplier near me",
   "How to post a product?",
   "How to connect with suppliers?",
-  "Payment & Money inquiries",
-  "About SpinTradeHub",
+  "What makes SpinTradeHub different?",
+  "How to send a quotation?",
 ];
 
 export default function ChatbotPage() {
@@ -31,33 +27,20 @@ export default function ChatbotPage() {
     {
       id: 1,
       role: 'bot',
-      text: `🤖 **Welcome to SpinBot - Your 24/7 AI Assistant!**
+      text: `🤖 **Welcome to SpinBot — Powered by Gemini AI!**
 
-Hello! I'm **SpinBot**, powered by AI to provide intelligent support 24/7.
+Hello${user?.displayName ? ` ${user.displayName}` : ''}! I'm **SpinBot**, your advanced AI assistant for SpinTradeHub.
 
 I can help you with:
-📦 **Buying & Selling** - Post products, find suppliers, create inquiries
-🤝 **Networking** - Connect with traders, business relationships
-💬 **Account Help** - Sign up, login, profile management
-💰 **Orders & Payments** - Payment solutions, quotations, orders
-🔐 **Security** - Account protection, privacy, verification
-📧 **General Support** - FAQs, platform info, contact details
+🔍 **Find Suppliers & Buyers** — Search real listings by product, price, location
+📦 **Buying & Selling** — Post products, create inquiries, manage orders
+💬 **Platform Help** — Messages, connections, notifications, dashboard
+💰 **Business Advice** — Quotations, invoices, negotiation tips
+🌍 **Global Trading** — Connect with partners worldwide
 
-**Our Commitment:**
-✅ 100% Accurate answers about SpinTradeHub
-✅ 24/7 Availability - Always online to help
-✅ Instant Responses - AI-powered instant answers
-✅ Expert Knowledge - Trained on all platform features
-✅ Business Support - Call ${'+971541635009'} for money/payment questions
+Just ask me anything — in **any language!**
 
-**How to ask:**
-• Ask in your own words
-• Be specific about what you need
-• I'll provide detailed, helpful answers
-
-**Pro Tip:** For urgent financial or payment matters, call **+971541635009** directly!
-
-What would you like to know?`,
+👉 Try: *"Who sells bearings at the cheapest rate?"*`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -69,8 +52,8 @@ What would you like to know?`,
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
       id: Date.now(),
@@ -83,43 +66,43 @@ What would you like to know?`,
     setInput('');
     setIsTyping(true);
 
-    // Check if user is asking about products/suppliers/prices → search live Firestore
-    if (isProductQuery(text)) {
-      searchPostsForQuery(text).then(posts => {
-        const responseText = formatProductResults(posts, text);
-        const botMsg: Message = {
-          id: Date.now() + 1,
-          role: 'bot',
-          text: responseText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          category: 'product-search',
-          confidence: 1,
-        };
-        setMessages(prev => [...prev, botMsg]);
-        setIsTyping(false);
-      });
-      return;
-    }
+    try {
+      // Search live Firestore posts if product-related query
+      let products: any[] = [];
+      if (isProductQuery(text)) {
+        products = await searchPostsForQuery(text);
+      }
 
-    // Use intelligent response matching with confidence scoring
-    setTimeout(() => {
-      const response = getChatbotResponse({
-        userMessage: text,
-        userId: user?.uid,
-        previousMessages: messages.map(m => m.text)
+      // Call Gemini API
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: messages.slice(-10), // last 10 messages for context
+          products,
+        }),
       });
 
+      const data = await res.json();
       const botMsg: Message = {
         id: Date.now() + 1,
         role: 'bot',
-        text: response.text,
+        text: data.text || data.error || 'Sorry, I could not process that. Please try again.',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        category: response.category,
-        confidence: response.confidence
       };
       setMessages(prev => [...prev, botMsg]);
+    } catch {
+      const botMsg: Message = {
+        id: Date.now() + 1,
+        role: 'bot',
+        text: '⚠️ Connection error. Please check your internet and try again.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, botMsg]);
+    } finally {
       setIsTyping(false);
-    }, 600 + Math.random() * 400);
+    }
   };
 
   return (
@@ -132,7 +115,7 @@ What would you like to know?`,
             <div style={{ width: '44px', height: '44px', backgroundColor: '#FF8C00', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 2px 8px rgba(255,140,0,0.3)' }}>🤖</div>
             <div>
               <h1 style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', margin: 0 }}>SpinBot AI Assistant</h1>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: 0 }}>✅ Online 24/7 • Powered by AI • Instant Answers</p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: 0 }}>✨ Powered by Gemini AI • Online 24/7 • Any Language</p>
             </div>
           </div>
         </div>
@@ -203,9 +186,6 @@ What would you like to know?`,
               </div>
               <p style={{ fontSize: '10px', color: '#999', margin: '4px 4px 0', textAlign: msg.role === 'user' ? 'right' : 'left' }}>
                 {msg.time}
-                {msg.role === 'bot' && msg.confidence && msg.confidence > 0.8 && (
-                  <span style={{ marginLeft: '6px', color: '#4CAF50' }}>✓ Confident match</span>
-                )}
               </p>
             </div>
             {msg.role === 'user' && (
