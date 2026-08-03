@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { isProductQuery, searchPostsForQuery } from '@/lib/chatbot-product-search';
+import { getChatbotResponse } from '@/lib/chatbot-knowledge-base';
+import { isProductQuery, searchPostsForQuery, formatProductResults } from '@/lib/chatbot-product-search';
 import Link from 'next/link';
 
 interface Message {
@@ -27,20 +28,26 @@ export default function ChatbotPage() {
     {
       id: 1,
       role: 'bot',
-      text: `🤖 **Welcome to SpinBot — Powered by Gemini AI!**
+      text: `🤖 **Welcome to SpinBot - Your 24/7 AI Assistant!**
 
-Hello${user?.displayName ? ` ${user.displayName}` : ''}! I'm **SpinBot**, your advanced AI assistant for SpinTradeHub.
+Hello! I'm **SpinBot**, powered by AI to provide intelligent support 24/7.
 
 I can help you with:
-🔍 **Find Suppliers & Buyers** — Search real listings by product, price, location
-📦 **Buying & Selling** — Post products, create inquiries, manage orders
-💬 **Platform Help** — Messages, connections, notifications, dashboard
-💰 **Business Advice** — Quotations, invoices, negotiation tips
-🌍 **Global Trading** — Connect with partners worldwide
+📦 **Buying & Selling** - Post products, find suppliers, create inquiries
+🤝 **Networking** - Connect with traders, business relationships
+💬 **Account Help** - Sign up, login, profile management
+💰 **Orders & Payments** - Payment solutions, quotations, orders
+🔐 **Security** - Account protection, privacy, verification
+📧 **General Support** - FAQs, platform info, contact details
 
-Just ask me anything — in **any language!**
+**Our Commitment:**
+✅ 100% Accurate answers about SpinTradeHub
+✅ 24/7 Availability - Always online to help
+✅ Instant Responses - AI-powered instant answers
+✅ Business Support - Call +971541635009 for money/payment questions
 
-👉 Try: *"Who sells bearings at the cheapest rate?"*`,
+What would you like to know?`,
+
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -52,8 +59,8 @@ Just ask me anything — in **any language!**
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isTyping) return;
+  const sendMessage = (text: string) => {
+    if (!text.trim()) return;
 
     const userMsg: Message = {
       id: Date.now(),
@@ -66,43 +73,38 @@ Just ask me anything — in **any language!**
     setInput('');
     setIsTyping(true);
 
-    try {
-      // Search live Firestore posts if product-related query
-      let products: any[] = [];
-      if (isProductQuery(text)) {
-        products = await searchPostsForQuery(text);
-      }
-
-      // Call Gemini API
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          history: messages.slice(-10), // last 10 messages for context
-          products,
-        }),
+    // Check if user is asking about products/suppliers/prices → search live Firestore
+    if (isProductQuery(text)) {
+      searchPostsForQuery(text).then(posts => {
+        const responseText = formatProductResults(posts, text);
+        const botMsg: Message = {
+          id: Date.now() + 1,
+          role: 'bot',
+          text: responseText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages(prev => [...prev, botMsg]);
+        setIsTyping(false);
       });
-
-      const data = await res.json();
-      const botMsg: Message = {
-        id: Date.now() + 1,
-        role: 'bot',
-        text: data.text || data.error || 'Sorry, I could not process that. Please try again.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, botMsg]);
-    } catch {
-      const botMsg: Message = {
-        id: Date.now() + 1,
-        role: 'bot',
-        text: '⚠️ Connection error. Please check your internet and try again.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, botMsg]);
-    } finally {
-      setIsTyping(false);
+      return;
     }
+
+    // Use knowledge base for all other questions
+    setTimeout(() => {
+      const response = getChatbotResponse({
+        userMessage: text,
+        userId: user?.uid,
+        previousMessages: messages.map(m => m.text)
+      });
+      const botMsg: Message = {
+        id: Date.now() + 1,
+        role: 'bot',
+        text: response.text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, botMsg]);
+      setIsTyping(false);
+    }, 600 + Math.random() * 400);
   };
 
   return (
@@ -115,7 +117,7 @@ Just ask me anything — in **any language!**
             <div style={{ width: '44px', height: '44px', backgroundColor: '#FF8C00', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 2px 8px rgba(255,140,0,0.3)' }}>🤖</div>
             <div>
               <h1 style={{ fontSize: '16px', fontWeight: 'bold', color: 'white', margin: 0 }}>SpinBot AI Assistant</h1>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: 0 }}>✨ Powered by Gemini AI • Online 24/7 • Any Language</p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: 0 }}>✅ Online 24/7 • Powered by AI • Instant Answers</p>
             </div>
           </div>
         </div>
