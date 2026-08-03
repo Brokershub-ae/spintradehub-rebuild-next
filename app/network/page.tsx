@@ -14,6 +14,8 @@ export default function NetworkPage() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [displayedUsers, setDisplayedUsers] = useState<any[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<any[]>([]);
+  const [connectedUserIds, setConnectedUserIds] = useState<Set<string>>(new Set());
+  const [pendingUserIds, setPendingUserIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('discover');
@@ -31,8 +33,8 @@ export default function NetworkPage() {
     // Real-time listener for all users
     const unsubscribeUsers = listenToAllUsers((users) => {
       const filtered = users
-        .filter((u) => u.uid !== user.uid) // Exclude current user
-        .filter((u) => u.uid !== undefined); // Ensure valid users
+        .filter((u) => u.uid !== user.uid)
+        .filter((u) => u.uid !== undefined);
 
       setAllUsers(filtered);
       setDisplayedUsers(filtered);
@@ -44,6 +46,26 @@ export default function NetworkPage() {
       try {
         const requests = await connectionService.getConnectionRequests(user.uid);
         setConnectionRequests(requests);
+
+        // Fetch ALL connections (sent + received) to find already-connected users
+        const allConnections = await connectionService.getUserConnectionRequests(user.uid);
+
+        const connectedIds = new Set<string>();
+        const pendingIds = new Set<string>();
+
+        allConnections.forEach((c: any) => {
+          if (c.status === 'ACCEPTED') {
+            // Add the other person's ID
+            if (c.senderId === user.uid) connectedIds.add(c.receiverId);
+            else connectedIds.add(c.senderId);
+          } else if (c.status === 'PENDING') {
+            if (c.senderId === user.uid) pendingIds.add(c.receiverId);
+            else pendingIds.add(c.senderId);
+          }
+        });
+
+        setConnectedUserIds(connectedIds);
+        setPendingUserIds(pendingIds);
       } catch (error) {
         console.error('Error fetching connection requests:', error);
       }
@@ -177,7 +199,11 @@ export default function NetworkPage() {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
-                {displayedUsers.map((u) => (
+                {displayedUsers
+                  .filter((u) => !connectedUserIds.has(u.uid)) // hide already connected
+                  .map((u) => {
+                  const isPending = pendingUserIds.has(u.uid);
+                  return (
                   <div key={u.uid} style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '16px', textAlign: 'center', transition: 'all 200ms' }} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)')}>
                     <div style={{ width: '60px', height: '60px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px', fontWeight: 'bold' }}>
                       {u.name?.charAt(0).toUpperCase() || '?'}
@@ -189,16 +215,26 @@ export default function NetworkPage() {
                     </p>
                     <p style={{ fontSize: '12px', color: '#666', margin: '8px 0' }}>📍 {u.region || 'N/A'}</p>
                     <p style={{ fontSize: '11px', color: '#999', margin: '4px 0' }}>📧 {u.email}</p>
-                    <button 
-                      onClick={() => handleSendConnectionRequest(u.uid, u.name || 'User', u.email || '')} 
-                      style={{ width: '100%', padding: '10px 12px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }} 
-                      onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')} 
-                      onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
-                    >
-                      🤝 Send Request
-                    </button>
+                    {isPending ? (
+                      <button disabled style={{ width: '100%', padding: '10px 12px', backgroundColor: '#ccc', color: '#666', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'not-allowed', marginTop: '12px' }}>
+                        ⏳ Request Sent
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          handleSendConnectionRequest(u.uid, u.name || 'User', u.email || '');
+                          setPendingUserIds(prev => new Set(prev).add(u.uid));
+                        }}
+                        style={{ width: '100%', padding: '10px 12px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }}
+                        onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')}
+                        onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
+                      >
+                        🤝 Send Request
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
