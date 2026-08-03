@@ -173,16 +173,24 @@ What would you like to know?`,
                 whiteSpace: 'pre-line',
                 wordWrap: 'break-word'
               }}>
-                {/* Format bold text and special formatting */}
+                {/* Format bold text and markdown links */}
                 {msg.text.split('\n').map((line, i) => (
                   <div key={i}>
-                    {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
-                      part.startsWith('**') && part.endsWith('**') ? (
-                        <strong key={j}>{part.slice(2, -2)}</strong>
-                      ) : (
-                        <span key={j}>{part}</span>
-                      )
-                    )}
+                    {line.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, j) => {
+                      if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={j}>{part.slice(2, -2)}</strong>;
+                      }
+                      const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+                      if (linkMatch) {
+                        return (
+                          <a key={j} href={linkMatch[2]}
+                            style={{ color: '#0056D2', textDecoration: 'underline', fontWeight: '600' }}>
+                            {linkMatch[1]}
+                          </a>
+                        );
+                      }
+                      return <span key={j}>{part}</span>;
+                    })}
                   </div>
                 ))}
               </div>

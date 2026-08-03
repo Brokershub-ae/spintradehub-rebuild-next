@@ -54,21 +54,23 @@ export async function searchPostsForQuery(userMessage: string): Promise<Product[
 
       let score = 0;
       for (const word of words) {
-        if (searchText.includes(word)) score += 2;
+        if (searchText.includes(word)) score += 3;
       }
 
-      // Boost SELL posts (users looking to buy need sellers)
+      // Boost SELL posts
       if (post.postType === 'SELL') score += 1;
 
       return { post, score };
     });
 
-    // Return top 5 relevant posts
-    return scored
-      .filter(s => s.score > 0)
+    // Only return posts with a strong match (score >= 3 means at least one real keyword matched)
+    const results = scored
+      .filter(s => s.score >= 3)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(s => s.post);
+
+    return results;
   } catch (error) {
     console.error('Error searching posts:', error);
     return [];
