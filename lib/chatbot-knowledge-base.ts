@@ -20,8 +20,7 @@ export interface ChatbotContext {
   previousMessages?: string[];
 }
 
-const SUPPORT_PHONE = '+971541635009';
-const SUPPORT_EMAIL = 'support@spintradehub.com';
+const SUPPORT_EMAIL = 'info@spintradehub.com / Customercare@spintradehub.com';
 const BUSINESS_HOURS = '24/7';
 
 // ============ COMPREHENSIVE KNOWLEDGE BASE ============
@@ -84,7 +83,7 @@ How can I assist you today? Feel free to ask about:
 • Quotation tools
 • Network building
 
-❓ Having issues? Contact us at ${SUPPORT_EMAIL} or call ${SUPPORT_PHONE}`,
+❓ Having issues? Email us at ${SUPPORT_EMAIL}`,
   },
 
   {
@@ -118,7 +117,6 @@ How can I assist you today? Feel free to ask about:
 
 **Still Having Issues?**
 Contact our support team:
-📞 Phone: ${SUPPORT_PHONE}
 📧 Email: ${SUPPORT_EMAIL}
 ⏰ Available: ${BUSINESS_HOURS}`,
   },
@@ -351,8 +349,7 @@ Common payment methods:
 
 **Payment Support:**
 If you have any payment-related questions or need assistance:
-📞 **Call us:** ${SUPPORT_PHONE}
-📧 **Email:** ${SUPPORT_EMAIL}
+📧 **Email us:** ${SUPPORT_EMAIL}
 
 **Creating Quotations:**
 1. Go to Dashboard
@@ -387,8 +384,8 @@ If you have any payment-related questions or need assistance:
 ✅ Save all transaction records
 ✅ Document agreements in writing
 
-For complex transactions or large orders, contact support:
-📞 ${SUPPORT_PHONE} (${BUSINESS_HOURS})`,
+For complex transactions or large orders, email support:
+📧 ${SUPPORT_EMAIL} (${BUSINESS_HOURS})`,
   },
 
   {
@@ -436,7 +433,6 @@ If package is delayed or damaged:
 3. Save all communications
 4. File claim with carrier if damaged
 5. Contact support if unresolved:
-   📞 ${SUPPORT_PHONE}
    📧 ${SUPPORT_EMAIL}
 
 **International Shipping:**
@@ -516,7 +512,7 @@ If supplier isn't responding:
 4. Try contacting their company directly
 
 Contact us if needed:
-📞 ${SUPPORT_PHONE}`,
+📧 ${SUPPORT_EMAIL}`,
   },
 
   {
@@ -667,7 +663,6 @@ If a review is:
 • Spam
 
 Contact support:
-📞 ${SUPPORT_PHONE}
 📧 ${SUPPORT_EMAIL}
 
 **Becoming Verified:**
@@ -740,7 +735,7 @@ Contact support:
 **When to Contact Support:**
 If issue persists after above steps:
 
-📞 **Call us:** ${SUPPORT_PHONE}
+📧 **Email us:** ${SUPPORT_EMAIL}
 📧 **Email:** ${SUPPORT_EMAIL}
 📱 **Chat support:** Available in-app
 ⏰ **Hours:** ${BUSINESS_HOURS}
@@ -833,7 +828,6 @@ If you notice:
 • Spam/phishing
 
 **Report Immediately:**
-📞 ${SUPPORT_PHONE}
 📧 ${SUPPORT_EMAIL}
 🚨 We respond within 1 hour
 
@@ -907,7 +901,7 @@ Verification means SpinTradeHub has confirmed:
 3. Maintain 4.5★+ rating
 4. Build transaction history
 5. Contact support for verification
-   📞 ${SUPPORT_PHONE}
+   📧 ${SUPPORT_EMAIL}
 
 **Requirements:**
 ✓ Legal business registration
@@ -945,7 +939,7 @@ Earned automatically when you meet:
 5. Badge added to profile
 
 **Questions About Verification?**
-📞 Call: ${SUPPORT_PHONE}
+📧 Email: ${SUPPORT_EMAIL}
 📧 Email: ${SUPPORT_EMAIL}`,
   },
 
@@ -968,7 +962,6 @@ For detailed assistance with:
 
 **Please Contact Our Business Team:**
 
-📞 **Phone:** ${SUPPORT_PHONE}
 📧 **Email:** ${SUPPORT_EMAIL}
 ⏰ **Available:** ${BUSINESS_HOURS}
 
@@ -1003,15 +996,13 @@ We look forward to working with you!`,
 **24/7 Customer Support Available!**
 
 **Direct Contact:**
-📞 **Phone:** ${SUPPORT_PHONE}
 📧 **Email:** ${SUPPORT_EMAIL}
 ⏰ **Hours:** ${BUSINESS_HOURS}
 
 **How to Reach Us:**
-1. **Phone Call** (fastest for urgent issues)
-   • Dial ${SUPPORT_PHONE}
+1. **Email Support**
+   • Contact ${SUPPORT_EMAIL}
    • Available 24/7
-   • Average wait: 1-2 minutes
    • Support in multiple languages
 
 2. **Email Support**
@@ -1079,7 +1070,7 @@ A: Absolutely! We use Firebase with military-grade encryption, SSL/HTTPS, and re
 A: Yes. Go to Settings → Account → Delete Account. Note: This is permanent and cannot be undone.
 
 **Q: How do I report a scam?**
-A: Report immediately to ${SUPPORT_PHONE} with details. We investigate all reports and take action.
+A: Report immediately to ${SUPPORT_EMAIL} with details. We investigate all reports and take action.
 
 **Q: Do you have a mobile app?**
 A: Yes! Available on Google Play Store for Android. iOS coming soon. Download "SpinTradeHub" app.
@@ -1094,7 +1085,6 @@ A: Payments are direct between buyer & seller. We don't process payments. Use yo
 Visit our full FAQ page: spintradehub.com/faq
 
 Still have questions?
-📞 ${SUPPORT_PHONE}
 📧 ${SUPPORT_EMAIL}`,
   },
 
@@ -1159,7 +1149,6 @@ Active traders in:
 And 40+ more countries!
 
 **Contact Information:**
-📞 ${SUPPORT_PHONE}
 📧 ${SUPPORT_EMAIL}
 🌐 www.spintradehub.com
 
@@ -1206,7 +1195,6 @@ Read our About page: spintradehub.com/about`,
 
 **Can't Find Answer?**
 Contact our support team:
-📞 **Call:** ${SUPPORT_PHONE}
 📧 **Email:** ${SUPPORT_EMAIL}
 
 **Please rephrase your question with more details:**

@@ -1,0 +1,231 @@
+.page {
+  height: 100vh;
+  height: var(--messages-height, 100dvh);
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+  font-family: Inter, sans-serif;
+  overflow: hidden;
+}
+
+.siteHeader {
+  flex-shrink: 0;
+}
+
+.logo {
+  width: 180px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.sidebar {
+  width: min(320px, 32%);
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatPane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: white;
+  flex-shrink: 0;
+}
+
+.contactName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.chatActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.backButton {
+  display: none;
+}
+
+.messageList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  background: #f0f3f5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.messageList > * {
+  flex-shrink: 0;
+}
+
+.message {
+  max-width: 70%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.composer {
+  position: relative;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  background: white;
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.inputRow > button,
+.emojiControl {
+  flex-shrink: 0;
+}
+
+.emojiControl {
+  position: relative;
+}
+
+.emojiPopover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+}
+
+.sendButton {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+}
+
+.navigation {
+  flex-shrink: 0;
+  background: white;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  z-index: 20;
+}
+
+@media (max-width: 700px) {
+  .logo {
+    width: 90px;
+    height: 36px;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: 0;
+  }
+
+  .chatPane {
+    display: none;
+  }
+
+  .chatOpen .sidebar,
+  .chatOpen .siteHeader,
+  .chatOpen .navigation {
+    display: none;
+  }
+
+  .chatOpen .chatPane {
+    display: flex;
+    width: 100%;
+  }
+
+  .chatHeader {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    background: #0056d2;
+  }
+
+  .contactName {
+    color: white;
+  }
+
+  .backButton {
+    display: block;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+  }
+
+  .chatActions {
+    margin-left: auto;
+  }
+
+  .messageList {
+    padding: 12px;
+  }
+
+  .message {
+    max-width: 88%;
+  }
+
+  .composer {
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .inputRow {
+    gap: 4px;
+  }
+
+  .emojiControl {
+    position: static;
+  }
+
+  .emojiPopover {
+    left: 8px;
+    width: min(340px, calc(100vw - 16px));
+    max-width: none;
+  }
+
+  .navigation a {
+    min-width: 0;
+  }
+}

@@ -33,8 +33,9 @@ export const listenToAllUsers = (callback: (users: any[]) => void) => {
     usersRef,
     (snapshot) => {
       const users = snapshot.docs.map(doc => ({
-        id: doc.id,
         ...doc.data(),
+        id: doc.id,
+        uid: doc.id,
       }));
       callback(users);
     },

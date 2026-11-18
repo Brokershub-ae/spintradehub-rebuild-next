@@ -36,6 +36,25 @@ export interface Order {
   updatedAt: number;
 }
 
+const sanitizeForFirestore = (value: any): any => {
+  if (value === undefined) return null;
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForFirestore(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, item]) => {
+      if (item !== undefined) {
+        acc[key] = sanitizeForFirestore(item);
+      }
+      return acc;
+    }, {} as Record<string, any>);
+  }
+
+  return value;
+};
+
 export const orderService = {
   /**
    * Create a new order
@@ -43,13 +62,14 @@ export const orderService = {
   async createOrder(orderData: any) {
     try {
       const now = Date.now();
+      const sanitizedOrderData = sanitizeForFirestore(orderData);
       const docRef = await addDoc(collection(db, 'orders'), {
-        ...orderData,
+        ...sanitizedOrderData,
         status: 'PENDING',
         createdAt: now,
         updatedAt: now,
       });
-      return { id: docRef.id, ...orderData, createdAt: now, updatedAt: now };
+      return { id: docRef.id, ...sanitizedOrderData, createdAt: now, updatedAt: now };
     } catch (error) {
       console.error('Error creating order:', error);
       throw error;

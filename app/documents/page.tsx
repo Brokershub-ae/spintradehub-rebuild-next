@@ -397,7 +397,7 @@ export default function DocumentsPage() {
               <div class="brand-text">
                 <div class="name">SpinTradeHub</div>
                 <div class="tagline">B2B Industrial Trading Platform</div>
-                <div class="contact">📧 support@spintradehub.com &nbsp;|&nbsp; 📞 +971541635009</div>
+                <div class="contact">📧 info@spintradehub.com &nbsp;|&nbsp; Customercare@spintradehub.com</div>
                 <div class="contact">🌐 spintradehub.com</div>
               </div>
             </div>
@@ -419,7 +419,7 @@ export default function DocumentsPage() {
               <div class="party-box">
                 <div class="party-label">From (Seller)</div>
                 <div class="party-name">${doc.senderName.includes('@') ? 'SpinTradeHub Seller' : doc.senderName}</div>
-                <div class="party-sub">📧 support@spintradehub.com</div>
+                <div class="party-sub">📧 info@spintradehub.com | Customercare@spintradehub.com</div>
               </div>
               <div class="party-box">
                 <div class="party-label">To (Buyer)</div>
@@ -481,7 +481,7 @@ export default function DocumentsPage() {
           <div class="footer">
             <img src="${logoUrl}" class="footer-logo" alt="" onerror="this.style.display='none'" />
             <p class="footer-brand">SpinTradeHub &nbsp;|&nbsp; <span class="tagline-footer">Bearings • Grease • Oil • V-Belts</span></p>
-            <p>📍 United Arab Emirates &nbsp;|&nbsp; 📞 +971541635009 &nbsp;|&nbsp; 📧 support@spintradehub.com</p>
+            <p>📍 United Arab Emirates &nbsp;|&nbsp; 📧 info@spintradehub.com &nbsp;|&nbsp; Customercare@spintradehub.com</p>
             <p style="margin-top:6px;color:#aaa;font-size:10px;">This is a computer-generated document from SpinTradeHub platform. &nbsp;|&nbsp; Ref: ${doc.docNumber}</p>
           </div>
         </div>
@@ -504,7 +504,7 @@ export default function DocumentsPage() {
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       {/* Header */}
       <header style={{ background: 'linear-gradient(135deg, #0056D2 0%, #0041A8 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Link href="/profile" style={{ color: 'white', fontSize: '20px', textDecoration: 'none' }}>←</Link>
             <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', margin: 0 }}>📄 Documents</h1>
@@ -515,7 +515,7 @@ export default function DocumentsPage() {
         </div>
       </header>
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+      <div style={{ padding: '16px' }}>
         {/* Stats Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
           {[
@@ -658,7 +658,7 @@ export default function DocumentsPage() {
                 <div>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px' }}>SpinTradeHub</div>
                   <div style={{ fontSize: '12px', opacity: 0.8 }}>B2B Industrial Trading Platform</div>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>+971541635009 | support@spintradehub.com</div>
+                  <div style={{ fontSize: '12px', opacity: 0.8 }}>info@spintradehub.com | Customercare@spintradehub.com</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#FF8C00', marginBottom: '4px' }}>{TYPE_ICONS[viewingDoc.type]} {viewingDoc.type.replace('_', ' ')}</div>

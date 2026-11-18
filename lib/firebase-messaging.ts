@@ -14,6 +14,7 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -30,6 +31,19 @@ export interface Attachment {
   uploadedAt?: number;
 }
 
+export interface ProductContext {
+  productId?: string;
+  productName?: string;
+  description?: string;
+  category?: string;
+  sellerName?: string;
+  sellerId?: string;
+  quantity?: number;
+  location?: string;
+  notes?: string;
+  postUrl?: string;
+}
+
 export interface Message {
   id?: string;
   senderId: string;
@@ -40,6 +54,7 @@ export interface Message {
   timestamp: number;
   read: boolean;
   attachments?: Attachment[];
+  productContext?: ProductContext;
 }
 
 export interface Conversation {
@@ -51,6 +66,25 @@ export interface Conversation {
   lastMessageTime: number;
   unreadCount: number;
 }
+
+const sanitizeForFirestore = (value: any): any => {
+  if (value === undefined) return null;
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForFirestore(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, item]) => {
+      if (item !== undefined) {
+        acc[key] = sanitizeForFirestore(item);
+      }
+      return acc;
+    }, {} as Record<string, any>);
+  }
+
+  return value;
+};
 
 export const messagingService = {
   /**
@@ -85,9 +119,11 @@ export const messagingService = {
     receiverId: string,
     receiverName: string,
     text: string,
-    attachments?: Attachment[]
+    attachments?: Attachment[],
+    productContext?: ProductContext
   ) {
     try {
+      const sanitizedProductContext = sanitizeForFirestore(productContext);
       const docRef = await addDoc(collection(db, 'messages'), {
         senderId,
         senderName,
@@ -97,11 +133,59 @@ export const messagingService = {
         timestamp: Date.now(),
         read: false,
         attachments: attachments || [],
+        productContext: sanitizedProductContext || null,
       });
-      return { id: docRef.id, senderId, senderName, receiverId, receiverName, text, timestamp: Date.now(), read: false, attachments };
+      return { id: docRef.id, senderId, senderName, receiverId, receiverName, text, timestamp: Date.now(), read: false, attachments, productContext: sanitizedProductContext };
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
+    }
+  },
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    try {
+      const q = query(
+        collection(db, 'messages'),
+        where('receiverId', '==', userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.filter((messageDoc) => !Boolean((messageDoc.data() as Message).read)).length;
+    } catch (error) {
+      console.error('Error fetching unread message count:', error);
+      return 0;
+    }
+  },
+
+  listenToUnreadMessageCount(userId: string, callback: (count: number) => void) {
+    try {
+      const q = query(
+        collection(db, 'messages'),
+        where('receiverId', '==', userId)
+      );
+
+      return onSnapshot(q, (snapshot) => {
+        const count = snapshot.docs.filter((messageDoc) => !Boolean((messageDoc.data() as Message).read)).length;
+        callback(count);
+      });
+    } catch (error) {
+      console.error('Error setting up unread message count listener:', error);
+      return undefined;
+    }
+  },
+
+  async markConversationAsRead(userId: string, otherUserId: string) {
+    try {
+      const q = query(
+        collection(db, 'messages'),
+        where('receiverId', '==', userId),
+        where('senderId', '==', otherUserId)
+      );
+      const snapshot = await getDocs(q);
+      await Promise.all(snapshot.docs
+        .filter((messageDoc) => !Boolean((messageDoc.data() as Message).read))
+        .map((messageDoc) => updateDoc(doc(db, 'messages', messageDoc.id), { read: true })));
+    } catch (error) {
+      console.error('Error marking conversation as read:', error);
     }
   },
 

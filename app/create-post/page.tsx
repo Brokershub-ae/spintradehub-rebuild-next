@@ -1,51 +1,36 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { productService } from '@/lib/firebase-service';
+import { productService, userService } from '@/lib/firebase-service';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Link from 'next/link';
+import ProductPhotosPicker from '@/components/ProductPhotosPicker';
+import { emptySpecifications, validateSpecifications } from '@/lib/product-details';
 
 export default function CreatePostPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const submitInFlight = useRef(false);
 
   const [formData, setFormData] = useState({
     productName: '',
+    ...emptySpecifications,
     description: '',
-    price: '',
     category: 'Bearings',
     postType: 'SELL',
-    quantity: '',
-    unit: 'pcs',
     location: '',
   });
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
   const categories = ['Bearings', 'Grease', 'V-Belts', 'Industrial Oils', 'Lubricants', 'Machinery', 'Accessories', 'Other'];
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image must be less than 5MB');
-        return;
-      }
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,47 +45,60 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitInFlight.current) return;
     if (!user) return;
-    if (!formData.productName || !formData.description || !formData.price) {
+    if (!formData.productName || !formData.description) {
       setError('Please fill in all required fields');
       return;
     }
 
+    if ((imageFiles.length || pdfFile) && !storage) {
+      setError('Photo/PDF upload is unavailable because Firebase Storage is not configured. Add the Firebase web config in Vercel and redeploy.');
+      return;
+    }
+
+    try {
+      validateSpecifications(formData);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Check the product details.');
+      return;
+    }
+    submitInFlight.current = true;
     setUploading(true);
     setError('');
 
+    let pdfUri = '';
+
     try {
-      let imageUri = '';
-      let pdfUri = '';
+      const imageUris = imageFiles.length ? await productService.uploadProductPhotos(user.uid, imageFiles) : [];
 
-      // Upload image if selected
-      if (imageFile && storage) {
-        const imageRef = ref(storage, `products/${user.uid}/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUri = await getDownloadURL(imageRef);
-      }
-
-      // Upload PDF if selected
       if (pdfFile && storage) {
         const pdfRef = ref(storage, `documents/${user.uid}/${Date.now()}_${pdfFile.name}`);
         await uploadBytes(pdfRef, pdfFile);
         pdfUri = await getDownloadURL(pdfRef);
       }
 
-      // Create product post
+      const currentProfile = await userService.getUserProfile(user.uid).catch(() => null);
+      const creatorName = currentProfile?.name || currentProfile?.username || user.displayName || (user.email ? user.email.split('@')[0] : '') || 'User';
+
       await productService.createPost({
         productName: formData.productName,
+        brand: formData.brand.trim(),
+        modelNumber: formData.modelNumber.trim(),
+        condition: formData.condition,
+        minimumOrderQuantity: formData.minimumOrderQuantity.trim(),
+        minimumOrderUnit: formData.minimumOrderUnit.trim(),
         description: formData.description,
-        price: formData.price,
+        price: '',
         category: formData.category,
         postType: formData.postType as 'SELL' | 'BUY',
-        quantity: formData.quantity,
-        unit: formData.unit,
         location: formData.location,
-        imageUri,
+        imageUri: imageUris[0] || '',
+        imageUris,
         pdfUri,
         creatorId: user.uid,
-        creatorName: user.displayName || 'Unknown',
+        userId: user.uid,
+        creatorName,
         timestamp: Date.now(),
         rating: 0,
         reviewCount: 0,
@@ -109,8 +107,9 @@ export default function CreatePostPage() {
       router.push('/feed');
     } catch (err: any) {
       console.error('Error creating post:', err);
-      setError('Failed to create post. Please try again.');
+      setError(`Failed to create post. ${err?.message || 'Please try again.'}`);
     } finally {
+      submitInFlight.current = false;
       setUploading(false);
     }
   };
@@ -127,16 +126,19 @@ export default function CreatePostPage() {
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Link href="/feed" style={{ color: 'white', textDecoration: 'none', fontSize: '20px' }}>←</Link>
-            <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', margin: 0 }}>Create Post</h1>
+            <Link href="/feed" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+              <img src="/logo.png" alt="SpinTradeHub logo" style={{ width: '34px', height: '34px', borderRadius: '8px', objectFit: 'cover' }} />
+              <span style={{ color: 'white', fontSize: '16px', fontWeight: '700' }}>SpinTradeHub</span>
+            </Link>
             <div style={{ width: '32px' }} />
           </div>
         </div>
       </header>
 
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+      <div style={{ padding: '16px' }}>
         {error && (
           <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px' }}>
             {error}
@@ -144,6 +146,7 @@ export default function CreatePostPage() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <fieldset disabled={uploading} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Post Type */}
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
@@ -160,21 +163,7 @@ export default function CreatePostPage() {
 
           {/* Photo Upload */}
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#333', display: 'block', marginBottom: '10px' }}>Product Photo</label>
-            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-            {imagePreview ? (
-              <div style={{ position: 'relative' }}>
-                <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
-                <button type="button" onClick={() => { setImageFile(null); setImagePreview(''); }}
-                  style={{ position: 'absolute', top: '8px', right: '8px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>×</button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => imageInputRef.current?.click()}
-                style={{ width: '100%', height: '120px', border: '2px dashed #E0E0E0', borderRadius: '8px', backgroundColor: '#FAFAFA', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#999' }}>
-                <span style={{ fontSize: '32px' }}>📷</span>
-                <span style={{ fontSize: '13px' }}>Tap to add photo</span>
-              </button>
-            )}
+            <ProductPhotosPicker files={imageFiles} onChange={setImageFiles} disabled={uploading} />
           </div>
 
           {/* PDF Upload */}
@@ -212,49 +201,23 @@ export default function CreatePostPage() {
                 onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} />
             </div>
 
+
             <div>
               <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Description *</label>
-              <textarea placeholder="Describe the product, specifications, condition..." value={formData.description}
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Tip: Write each point on a new line starting with • for a cleaner, professional look.</div>
+              <textarea placeholder="• Product type\n• Brand\n• Condition\n• Specifications" value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} required
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', minHeight: '100px', fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')}
                 onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Price (USD) *</label>
-                <input type="text" placeholder="e.g. 25.00" value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })} required
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', outline: 'none' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} />
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Quantity</label>
-                <input type="text" placeholder="e.g. 100" value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', outline: 'none' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = '#0056D2')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = '#E0E0E0')} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Category</label>
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: 'white', outline: 'none' }}>
-                  {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Unit</label>
-                <select value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: 'white', outline: 'none' }}>
-                  {['pcs', 'kg', 'litre', 'box', 'set', 'meter', 'ton'].map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
+            <div>
+              <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Category</label>
+              <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: 'white', outline: 'none' }}>
+                {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
             </div>
 
             <div>
@@ -271,6 +234,7 @@ export default function CreatePostPage() {
             style={{ padding: '16px', backgroundColor: uploading ? '#999' : '#FF8C00', color: 'white', border: 'none', borderRadius: '12px', cursor: uploading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>
             {uploading ? '⏳ Uploading...' : '🚀 Post Now'}
           </button>
+          </fieldset>
         </form>
       </div>
     </div>

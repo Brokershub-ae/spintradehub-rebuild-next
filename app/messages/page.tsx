@@ -7,6 +7,7 @@ import { messagingService } from '@/lib/firebase-messaging';
 import { useToast } from '@/lib/toast-context';
 import Link from 'next/link';
 import EmojiPicker from 'emoji-picker-react';
+import styles from './messages.module.css';
 
 function MessagesContent() {
   const { user, loading: authLoading } = useAuth();
@@ -26,11 +27,24 @@ function MessagesContent() {
   const [isLive, setIsLive] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [updateTrigger, setUpdateTrigger] = useState(0);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout>();
   const timestampIntervalRef = useRef<NodeJS.Timeout>();
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport || loading || authLoading) return;
+    const resize = () => {
+      pageRef.current?.style.setProperty('--messages-height', `${viewport.height}px`);
+    };
+    resize();
+    viewport.addEventListener('resize', resize);
+    return () => viewport.removeEventListener('resize', resize);
+  }, [loading, authLoading]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -50,8 +64,8 @@ function MessagesContent() {
         
         if (isMounted) {
           setConversations(convs);
-          if (convs.length > 0) {
-            selectConversation(convs[0]);
+          if (convs.length > 0 && !userIdParam && window.matchMedia('(min-width: 701px)').matches) {
+            selectConversation(convs[0], false);
           }
           setLoading(false);
         }
@@ -90,7 +104,8 @@ function MessagesContent() {
 
   useEffect(() => {
     // If there's a user parameter and conversations are loaded, find and select that conversation
-    if (userIdParam && user) {
+    if (userIdParam && user && !loading && selectedConversation?.otherUserId !== userIdParam) {
+      let cancelled = false;
       // First check if conversation already exists
       const targetConv = conversations.find(c => c.senderId === userIdParam || c.otherUserId === userIdParam);
       if (targetConv) {
@@ -98,13 +113,15 @@ function MessagesContent() {
       } else {
         // No existing conversation, create one
         messagingService.getOrCreateConversation(user.uid, userIdParam).then(conv => {
-          selectConversation(conv);
+          if (!cancelled) selectConversation(conv);
         }).catch(err => {
           console.error('Error creating conversation:', err);
+          if (!cancelled) addToast({ type: 'error', title: 'Error', message: 'Unable to open this conversation. Please try again.' });
         });
       }
+      return () => { cancelled = true; };
     }
-  }, [userIdParam, user, conversations]);
+  }, [userIdParam, user, conversations, loading, selectedConversation?.otherUserId]);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -127,12 +144,14 @@ function MessagesContent() {
   // Fallback polling - refresh messages every 30 seconds if real-time isn't active
   useEffect(() => {
     if (selectedConversation && user) {
+      let cancelled = false;
       const refreshMessages = async () => {
         try {
           const freshMessages = await messagingService.getMessages(
             user.uid,
             selectedConversation.otherUserId
           );
+          if (cancelled) return;
           setMessages(freshMessages);
           if (!isLive) {
             setIsLive(true);
@@ -147,6 +166,7 @@ function MessagesContent() {
       pollingIntervalRef.current = setInterval(refreshMessages, 30000); // Poll every 30 seconds
 
       return () => {
+        cancelled = true;
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
         }
@@ -174,24 +194,66 @@ function MessagesContent() {
     }
   };
 
-  const selectConversation = async (conv: any) => {
+  const selectConversation = (conv: any, openOnMobile = true) => {
     setSelectedConversation(conv);
-    try {
+    setMobileChatOpen(openOnMobile);
+    setShowEmojiPicker(false);
+  };
+
+  const handleBackToChats = () => {
+    setMobileChatOpen(false);
+    setSelectedConversation(null);
+    setMessages([]);
+    setShowEmojiPicker(false);
+    if (userIdParam) router.replace('/messages');
+  };
+
+  useEffect(() => {
+    if (!selectedConversation || !user) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    const conv = selectedConversation;
+    setMessages([]);
+    const load = async () => {
+      try {
       // Get fresh messages for this conversation
       const msgs = await messagingService.getMessages(user!.uid, conv.otherUserId);
+      if (cancelled) return;
       setMessages(msgs);
 
+      // Auto-mark incoming messages as read as soon as the conversation is opened.
+      if (msgs.some((msg) => msg.receiverId === user!.uid && !msg.read)) {
+        await messagingService.markConversationAsRead(user!.uid, conv.otherUserId);
+        const refreshed = await messagingService.getMessages(user!.uid, conv.otherUserId);
+        if (cancelled) return;
+        setMessages(refreshed);
+      }
+
+      // Keep unread messages visible until they are explicitly handled.
       // Set up real-time listener for new messages
-      const unsubscribe = messagingService.listenToMessages(
+      if (cancelled) return;
+      unsubscribe = messagingService.listenToMessages(
         user!.uid,
         conv.otherUserId,
-        (updatedMessages) => {
+        async (updatedMessages) => {
+          if (cancelled) return;
           setMessages(updatedMessages);
+
+          if (updatedMessages.some((msg) => msg.receiverId === user!.uid && !msg.read)) {
+            try {
+              await messagingService.markConversationAsRead(user!.uid, conv.otherUserId);
+              const refreshed = await messagingService.getMessages(user!.uid, conv.otherUserId);
+              if (!cancelled) setMessages(refreshed);
+            } catch (error) {
+              console.error('Error marking incoming messages as read:', error);
+              if (!cancelled) addToast({ type: 'error', title: 'Error', message: 'Unable to mark incoming messages as read.' });
+            }
+          }
         }
       );
 
-      return () => unsubscribe?.();
     } catch (error) {
+      if (cancelled) return;
       console.error('Error loading messages:', error);
       addToast({
         type: 'error',
@@ -199,7 +261,10 @@ function MessagesContent() {
         message: 'Failed to load messages',
       });
     }
-  };
+    };
+    load();
+    return () => { cancelled = true; unsubscribe?.(); };
+  }, [selectedConversation?.otherUserId, user?.uid]);
 
   const handleAttachmentSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -351,6 +416,31 @@ function MessagesContent() {
     }
   };
 
+  const handleMarkCurrentConversationAsRead = async () => {
+    if (!selectedConversation || !user?.uid) return;
+
+    try {
+      await messagingService.markConversationAsRead(user.uid, selectedConversation.otherUserId);
+
+      setConversations((prev) =>
+        prev.map((convo) =>
+          convo.id === selectedConversation.id ? { ...convo, unreadCount: 0 } : convo
+        )
+      );
+
+      setSelectedConversation((prev: any) =>
+        prev ? { ...prev, unreadCount: 0 } : prev
+      );
+    } catch (error) {
+      console.error('Error marking conversation as read:', error);
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Unable to mark the conversation as read.',
+      });
+    }
+  };
+
   // Format timestamp as relative time
   const formatRelativeTime = (timestamp: number) => {
     const now = Date.now();
@@ -376,52 +466,22 @@ function MessagesContent() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '80px', fontFamily: 'Inter, sans-serif' }}>
-      <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
+    <div ref={pageRef} className={`${styles.page} ${mobileChatOpen ? styles.chatOpen : ''}`}>
+      <header className={styles.siteHeader} style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', zIndex: 10 }}>
         <div style={{ maxWidth: '100%', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white' }}>
             <span style={{ fontSize: '20px' }}>←</span>
-            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: 'white' }}>💬 Messages</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img className={styles.logo} src="/logo_latest.png" alt="SpinTradeHub logo" />
+              <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: 'white' }}>💬 Messages</h1>
+            </div>
           </Link>
           
-          {/* Live Status Indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'white', fontWeight: '500' }}>
-            {connectionStatus === 'connected' && (
-              <>
-                <span style={{ width: '8px', height: '8px', backgroundColor: '#00FF00', borderRadius: '50%', animation: 'pulse 2s infinite' }}></span>
-                <span>🔴 LIVE</span>
-              </>
-            )}
-            {connectionStatus === 'reconnected' && (
-              <>
-                <span style={{ width: '8px', height: '8px', backgroundColor: '#FFA500', borderRadius: '50%' }}></span>
-                <span>Reconnected</span>
-              </>
-            )}
-            {connectionStatus === 'offline' && (
-              <>
-                <span style={{ width: '8px', height: '8px', backgroundColor: '#FF6B6B', borderRadius: '50%' }}></span>
-                <span>Offline Mode</span>
-              </>
-            )}
-            {connectionStatus === 'connecting' && (
-              <>
-                <span style={{ width: '8px', height: '8px', backgroundColor: '#FFD700', borderRadius: '50%', animation: 'pulse 1s infinite' }}></span>
-                <span>Connecting...</span>
-              </>
-            )}
-          </div>
         </div>
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `}</style>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <div style={{ width: 'min(300px, 30%)', backgroundColor: 'white', borderRight: '1px solid #E0E0E0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className={styles.workspace}>
+        <div className={styles.sidebar}>
           <div style={{ padding: '16px', borderBottom: '1px solid #E0E0E0' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>Conversations</h2>
           </div>
@@ -430,7 +490,9 @@ function MessagesContent() {
               <div style={{ padding: '16px', textAlign: 'center', color: '#999', fontSize: '13px' }}>No conversations yet</div>
             ) : (
               conversations.map((convo) => (
-                <div
+                <button
+                  type="button"
+                  aria-pressed={selectedConversation?.id === convo.id}
                   key={convo.id}
                   onClick={() => selectConversation(convo)}
                   style={{
@@ -441,6 +503,12 @@ function MessagesContent() {
                     transition: 'all 200ms',
                     display: 'flex',
                     gap: '12px',
+                    width: '100%',
+                    textAlign: 'left',
+                    borderTop: 0,
+                    borderLeft: 0,
+                    borderRight: 0,
+                    fontFamily: 'inherit',
                     alignItems: 'flex-start',
                   }}
                   onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F5')}
@@ -468,7 +536,7 @@ function MessagesContent() {
                   {/* Conversation Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0 }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {convo.otherUserName}
                       </h3>
                       <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>
@@ -495,38 +563,59 @@ function MessagesContent() {
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className={styles.chatPane}>
           {selectedConversation ? (
             <>
-              <div style={{ padding: '16px', borderBottom: '1px solid #E0E0E0', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>
+              <div className={styles.chatHeader}>
+                <button type="button" className={styles.backButton} onClick={handleBackToChats} disabled={uploading} aria-label="Back to conversations">←</button>
+                <h2 className={styles.contactName}>
                   {selectedConversation.otherUserName}
                 </h2>
-                <Link
-                  href={`/profile/${selectedConversation.otherUserId}`}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: '#0056D2',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    border: 'none',
-                  }}
-                >
-                  👤 View Profile
-                </Link>
+                <div className={styles.chatActions}>
+                  {selectedConversation.unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkCurrentConversationAsRead}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#FF8C00',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✓ Mark as read
+                    </button>
+                  )}
+                  <Link
+                    href={`/profile/${selectedConversation.otherUserId}`}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#0056D2',
+                      color: 'white',
+                      textDecoration: 'none',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      border: 'none',
+                    }}
+                  >
+                    👤 View Profile
+                  </Link>
+                </div>
               </div>
 
-              <div style={{ flex: 1, padding: '16px', overflowY: 'auto', backgroundColor: '#FAFAFA', display: 'flex', flexDirection: 'column', gap: '10px' }} key={updateTrigger}>
+              <div className={styles.messageList} key={updateTrigger} role="log" aria-label="Messages">
                 {messages.length === 0 ? (
                   <div style={{ textAlign: 'center', color: '#999', padding: '20px' }}>
                     <p>No messages yet. Start the conversation!</p>
@@ -535,9 +624,9 @@ function MessagesContent() {
                   messages.map((msg) => (
                     <div
                       key={msg.id}
+                      className={styles.message}
                       style={{
                         alignSelf: msg.senderId === user?.uid ? 'flex-end' : 'flex-start',
-                        maxWidth: '70%',
                       }}
                     >
                       <div
@@ -550,6 +639,49 @@ function MessagesContent() {
                           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                         }}
                       >
+                        {msg.productContext && (
+                          <div
+                            style={{
+                              marginBottom: msg.text ? '10px' : 0,
+                              padding: '10px 12px',
+                              borderRadius: '8px',
+                              backgroundColor: msg.senderId === user?.uid ? 'rgba(255,255,255,0.16)' : '#F0F7FF',
+                              border: `1px solid ${msg.senderId === user?.uid ? 'rgba(255,255,255,0.22)' : '#D7E9FF'}`,
+                            }}
+                          >
+                            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.8, marginBottom: '6px' }}>
+                              Shared post
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
+                              {msg.productContext.productName || 'Untitled post'}
+                            </div>
+                            {msg.productContext.description && (
+                              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '6px', whiteSpace: 'pre-wrap' }}>
+                                {msg.productContext.description}
+                              </div>
+                            )}
+                            <div style={{ fontSize: '12px', opacity: 0.85, display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {msg.productContext.category && <span>Category: {msg.productContext.category}</span>}
+                              {msg.productContext.sellerName && <span>Seller: {msg.productContext.sellerName}</span>}
+                            </div>
+                            {msg.productContext.postUrl && (
+                              <Link
+                                href={msg.productContext.postUrl}
+                                style={{
+                                  display: 'inline-block',
+                                  marginTop: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  color: msg.senderId === user?.uid ? 'white' : '#0056D2',
+                                  textDecoration: 'underline',
+                                }}
+                              >
+                                Open post
+                              </Link>
+                            )}
+                          </div>
+                        )}
+
                         {msg.text && <p style={{ margin: 0, wordWrap: 'break-word' }}>{msg.text}</p>}
 
                         {/* Display Attachments */}
@@ -608,7 +740,7 @@ function MessagesContent() {
                   e.preventDefault();
                   handleSendMessage();
                 }}
-                style={{ padding: '16px', borderTop: '1px solid #E0E0E0', backgroundColor: 'white' }}
+                className={styles.composer}
               >
                 {/* Attachments Display */}
                 {attachments.length > 0 && (
@@ -652,7 +784,7 @@ function MessagesContent() {
                 )}
 
                 {/* Input Area */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className={styles.inputRow}>
                   {/* Hidden File Input */}
                   <input
                     ref={fileInputRef}
@@ -682,12 +814,13 @@ function MessagesContent() {
                       minWidth: '40px',
                     }}
                     title="Attach files (images, PDF)"
+                    aria-label="Attach files"
                   >
                     📎
                   </button>
 
                   {/* Emoji Button */}
-                  <div style={{ position: 'relative' }}>
+                  <div className={styles.emojiControl}>
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -707,6 +840,7 @@ function MessagesContent() {
                         transition: 'all 200ms',
                       }}
                       title="Add emoji"
+                      aria-label="Add emoji"
                     >
                       😊
                     </button>
@@ -715,10 +849,8 @@ function MessagesContent() {
                     {showEmojiPicker && (
                       <div
                         ref={emojiPickerRef}
+                        className={styles.emojiPopover}
                         style={{
-                          position: 'absolute',
-                          bottom: '100%',
-                          left: 0,
                           marginBottom: '8px',
                           zIndex: 1000,
                           borderRadius: '8px',
@@ -728,7 +860,7 @@ function MessagesContent() {
                         <EmojiPicker
                           onEmojiClick={handleEmojiSelect}
                           height={300}
-                          width={300}
+                          width="100%"
                           lazyLoadEmojis={true}
                         />
                       </div>
@@ -738,16 +870,18 @@ function MessagesContent() {
                   {/* Message Input */}
                   <input
                     type="text"
+                    aria-label="Message"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type your message..."
                     disabled={uploading}
                     style={{
                       flex: 1,
+                      minWidth: 0,
                       padding: '10px 12px',
                       border: '1px solid #E0E0E0',
                       borderRadius: '8px',
-                      fontSize: '13px',
+                      fontSize: '16px',
                       outline: 'none',
                       fontFamily: 'inherit',
                       backgroundColor: uploading ? '#F5F5F5' : 'white',
@@ -760,9 +894,10 @@ function MessagesContent() {
                   {/* Send Button */}
                   <button
                     type="submit"
+                    className={styles.sendButton}
+                    aria-label={uploading ? 'Sending message' : 'Send message'}
                     disabled={uploading}
                     style={{
-                      padding: '10px 24px',
                       backgroundColor: uploading ? '#CCC' : '#FF8C00',
                       color: 'white',
                       border: 'none',
@@ -774,7 +909,7 @@ function MessagesContent() {
                     onMouseOver={(e) => !uploading && (e.currentTarget.style.background = '#E67E00')}
                     onMouseOut={(e) => !uploading && (e.currentTarget.style.background = '#FF8C00')}
                   >
-                    {uploading ? 'Uploading...' : 'Send'}
+                    {uploading ? '…' : '➤'}
                   </button>
                 </div>
               </form>
@@ -787,7 +922,7 @@ function MessagesContent() {
         </div>
       </div>
 
-      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', boxShadow: '0 -2px 8px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-around', padding: '8px 0', zIndex: 20 }}>
+      <nav className={styles.navigation}>
         <Link href="/" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>🏠</span>
           <span>Home</span>
@@ -799,6 +934,10 @@ function MessagesContent() {
         <Link href="/messages" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#0056D2', fontSize: '12px', fontWeight: '600' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>💬</span>
           <span>Messages</span>
+        </Link>
+        <Link href="/network" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px' }}>🤝</span>
+          <span>Network</span>
         </Link>
         <Link href="/profile" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>👤</span>

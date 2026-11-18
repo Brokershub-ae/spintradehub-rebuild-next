@@ -34,7 +34,12 @@ export interface UserProfile {
  */
 export async function syncAuthUsersToFirestore(): Promise<UserProfile | undefined> {
   console.log('🔄 Syncing Firebase Auth users to Firestore...');
-  
+
+  if (!auth || !db) {
+    console.warn('Firebase is not initialized. Skipping sync.');
+    return;
+  }
+
   try {
     // Get current auth user's profile info
     const currentUser = auth.currentUser;
@@ -80,7 +85,12 @@ export async function syncAuthUsersToFirestore(): Promise<UserProfile | undefine
  */
 export async function batchSyncUsersFromAuth(): Promise<void> {
   console.log('🔄 Batch syncing all Auth users to Firestore...');
-  
+
+  if (!auth || !db) {
+    console.warn('Firebase is not initialized. Skipping batch sync.');
+    return;
+  }
+
   try {
     // Get all existing Firestore users
     const existingUsers = await getDocs(collection(db, 'users'));

@@ -1,0 +1,124 @@
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: #334155;
+}
+.fields input, .fields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  font-size: 16px;
+}
+.photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+  gap: 10px;
+}
+.photos img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+}
+.photos button, .thumbnails button {
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+.hero {
+  width: 100%;
+  height: 300px;
+  padding: 0;
+  border: 0;
+  background: #f1f5f9;
+  cursor: zoom-in;
+}
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.thumbnails {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px;
+}
+.thumbnails img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+.thumbnails button[aria-pressed="true"] {
+  outline: 2px solid #0056d2;
+}
+.dialog {
+  width: min(1000px, 95vw);
+  max-width: 95vw;
+  max-height: 95dvh;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 12px;
+}
+.dialog::backdrop {
+  background: rgb(0 0 0 / 85%);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.toolbar button {
+  padding: 10px;
+  cursor: pointer;
+}
+.zoomArea {
+  overflow: auto;
+  max-height: 70dvh;
+  text-align: center;
+}
+.zoomArea img {
+  max-width: 100%;
+  max-height: 65dvh;
+  object-fit: contain;
+}
+.zoomArea[data-zoomed="true"] img {
+  width: 180%;
+  max-width: none;
+  max-height: none;
+}
+.specifications {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  overflow-wrap: anywhere;
+  margin: 16px 0;
+}
+.specifications div {
+  min-width: 0;
+}
+.specifications dt {
+  font-size: 12px;
+  color: #64748b;
+}
+.specifications dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+}

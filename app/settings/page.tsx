@@ -29,7 +29,7 @@ export default function SettingsPage() {
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', margin: 0 }}>Settings</h1>
             <Link href="/feed" style={{ color: 'white', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '14px' }}>Back</Link>
@@ -37,7 +37,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ padding: '24px 16px' }}>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'white', borderRadius: '8px', padding: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
           {['privacy', 'notifications', 'account', 'help'].map((tab, idx) => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: '1', padding: '10px 12px', backgroundColor: activeTab === tab ? '#0056D2' : 'white', color: activeTab === tab ? 'white' : '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', minWidth: '100px' }}>

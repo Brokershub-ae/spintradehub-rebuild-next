@@ -87,7 +87,7 @@ No suppliers have posted this product yet. Here's what you can do:
 
 🔔 **Check the Feed** — Visit [Product Feed](/feed) regularly as new products are added daily.
 
-📞 **Contact Support** — Call **+971541635009** and we'll help you find the right supplier.`;
+📧 **Contact Support** — Email **info@spintradehub.com** or **Customercare@spintradehub.com** and we'll help you find the right supplier.`;
   }
 
   const lines: string[] = [];

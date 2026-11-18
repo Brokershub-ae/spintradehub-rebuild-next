@@ -69,16 +69,19 @@ export default function FeaturesPage() {
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white', fontSize: '14px', marginBottom: '8px' }}>
-            <span>←</span> Back Home
-          </Link>
+        <div style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <img src="/logo.png" alt="SpinTradeHub logo" style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover' }} />
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white', fontSize: '14px' }}>
+              <span>←</span> Back Home
+            </Link>
+          </div>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', margin: 0 }}>Platform Features</h1>
           <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', margin: '4px 0 0 0' }}>Everything for B2B trading</p>
         </div>
       </header>
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ padding: '24px 16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
           {features.map((feat, idx) => (
             <div key={idx} style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px', textAlign: 'center', transition: 'all 200ms' }} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)', e.currentTarget.style.transform = 'translateY(-2px)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)', e.currentTarget.style.transform = 'translateY(0)')}>

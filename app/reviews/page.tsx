@@ -13,6 +13,7 @@ export default function ReviewsPage() {
   const [newReview, setNewReview] = useState({ rating: 5, text: '' });
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function ReviewsPage() {
   const loadReviews = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const userReviews = await reviewService.getUserReviews(user!.uid);
       const rating = await reviewService.getUserAverageRating(user!.uid);
       
@@ -35,6 +37,7 @@ export default function ReviewsPage() {
       setAvgRating(rating.avg);
     } catch (error) {
       console.error('Error loading reviews:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -65,6 +68,10 @@ export default function ReviewsPage() {
   };
 
   if (authLoading || loading) {
+    if (loadError) {
+      return <div role="alert" style={{ padding: '40px', color: '#dc2626' }}>Unable to load your reviews and rating. Please refresh to try again. <Link href="/profile">Back to profile</Link></div>;
+    }
+
     return (
       <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'Inter, sans-serif' }}>
         <p>Loading reviews...</p>

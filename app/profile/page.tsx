@@ -53,6 +53,17 @@ export default function ProfilePage() {
   const [userProducts, setUserProducts] = useState<any[]>([]);
   const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [editingPostData, setEditingPostData] = useState({
+    productName: '',
+    description: '',
+    category: 'Bearings',
+    postType: 'SELL',
+    location: '',
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -112,6 +123,10 @@ export default function ProfilePage() {
     }
   };
 
+  const getPostImageUrl = (post: any) => {
+    return post?.imageUri || post?.imageUrl || post?.photo || post?.thumbnail || post?.photoUrl || post?.img || '';
+  };
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -125,6 +140,85 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile');
+    }
+  };
+
+  const handleProfilePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setPhotoUploading(true);
+      const imageUrl = await userService.uploadProfileImage(user.uid, file);
+      const updatedProfile = { ...profileData, profileImageUri: imageUrl };
+      setProfileData(updatedProfile);
+      setTempData(updatedProfile);
+      await userService.updateProfile(user.uid, { profileImageUri: imageUrl });
+    } catch (error) {
+      console.error('Error uploading profile photo:', error);
+      alert('Failed to upload profile photo');
+    } finally {
+      setPhotoUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const openEditPost = (product: any) => {
+    setEditingPostId(product.id);
+    setEditingPostData({
+      productName: product.productName || '',
+      description: product.description || product.fullDescription || '',
+      category: product.category || 'Bearings',
+      postType: product.postType || 'SELL',
+      location: product.location || '',
+    });
+  };
+
+  const handleSaveEditedPost = async () => {
+    if (!editingPostId) return;
+
+    const trimmedProductName = editingPostData.productName.trim();
+    const trimmedDescription = editingPostData.description.trim();
+
+    if (!trimmedProductName || !trimmedDescription) {
+      alert('Please complete the product name and description before saving.');
+      return;
+    }
+
+    try {
+      const updatedPost: Partial<any> = {
+        productName: trimmedProductName,
+        description: trimmedDescription,
+        category: editingPostData.category,
+        postType: editingPostData.postType as 'SELL' | 'BUY',
+        location: editingPostData.location,
+      };
+
+      await productService.updatePost(editingPostId, updatedPost);
+      setUserProducts((prev) =>
+        prev.map((product) =>
+          product.id === editingPostId ? { ...product, ...updatedPost } : product
+        )
+      );
+      setEditingPostId(null);
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert('Failed to update post. Please try again.');
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await productService.deletePost(postId);
+      setUserProducts((prev) => prev.filter((product) => product.id !== postId));
+      if (editingPostId === postId) {
+        setEditingPostId(null);
+      }
+      setShowDeleteModal(false);
+      setPostToDelete(null);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Failed to delete post. Please try again.');
     }
   };
 
@@ -143,8 +237,10 @@ export default function ProfilePage() {
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       {/* Header */}
       <header style={{ background: 'linear-gradient(135deg, #0056D2 0%, #0041A8 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', margin: 0 }}>My Profile</h1>
+        <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/logo_latest.png" alt="SpinTradeHub logo" style={{ height: '62px', objectFit: 'contain', display: 'block' }} />
+          </div>
           <button 
             onClick={handleLogout} 
             style={{ padding: '8px 16px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }} 
@@ -156,14 +252,34 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+      <div style={{ padding: '16px' }}>
         {/* Profile Card */}
         <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
-              <div style={{ position: 'relative' }}>
-              <div style={{ width: '100px', height: '100px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(0,86,210,0.3)' }}>
-                {profileData.name?.charAt(0).toUpperCase() || 'U'}
-              </div>
+            <div style={{ position: 'relative' }}>
+              {profileData.profileImageUri ? (
+                <img
+                  src={profileData.profileImageUri}
+                  alt="Profile"
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    boxShadow: '0 4px 12px rgba(0,86,210,0.3)',
+                    border: '3px solid #0056D2',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <div style={{ width: '100px', height: '100px', backgroundColor: '#0056D2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(0,86,210,0.3)' }}>
+                  {profileData.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+              <label htmlFor="profile-photo-upload" style={{ position: 'absolute', right: '-6px', bottom: '-2px', width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#FF8C00', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', color: 'white', fontSize: '16px', fontWeight: 'bold' }} title="Change photo">
+                <input id="profile-photo-upload" type="file" accept="image/*" onChange={handleProfilePhotoUpload} style={{ display: 'none' }} />
+                {photoUploading ? '...' : '✎'}
+              </label>
             </div>
 
             {/* User Info */}
@@ -180,14 +296,20 @@ export default function ProfilePage() {
             </div>
 
             {/* Edit Button */}
-            <button 
-              onClick={() => { setTempData(profileData); setIsEditing(true); }} 
-              style={{ padding: '10px 24px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }} 
-              onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')} 
-              onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
-            >
-              ✏️ Edit Profile
-            </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <label htmlFor="profile-photo-upload-inline" style={{ padding: '10px 16px', backgroundColor: '#EAF2FF', color: '#0056D2', border: '1px solid #CFE0FF', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                <input id="profile-photo-upload-inline" type="file" accept="image/*" onChange={handleProfilePhotoUpload} style={{ display: 'none' }} />
+                {photoUploading ? 'Uploading...' : '✎ Change'}
+              </label>
+              <button 
+                onClick={() => { setTempData(profileData); setIsEditing(true); }} 
+                style={{ padding: '10px 24px', backgroundColor: '#FF8C00', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }} 
+                onMouseOver={(e) => (e.currentTarget.style.background = '#E67E00')} 
+                onMouseOut={(e) => (e.currentTarget.style.background = '#FF8C00')}
+              >
+                ✎ Edit Profile
+              </button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -207,16 +329,13 @@ export default function ProfilePage() {
           </div>
 
           {/* Quick Actions */}
-          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
-            <QuickActionButton href="/analytics" icon="📊" label="Analytics" />
-            <QuickActionButton href="/orders" icon="📋" label="Orders" />
-            <QuickActionButton href="/documents" icon="📄" label="Documents" />
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+            <QuickActionButton href="/feed" icon="📦" label="My Post(Products)" />
+            <QuickActionButton href="/network" icon="🤝" label="Connections" />
             <QuickActionButton href="/messages" icon="💬" label="Messages" />
-            <QuickActionButton href="/reviews" icon="⭐" label="Reviews" />
-            <QuickActionButton href="/network" icon="🤝" label="Network" />
-            {profileData.role === 'supplier' && <QuickActionButton href="/seller-dashboard" icon="📊" label="Seller Dashboard" />}
-            <QuickActionButton href="/feed" icon="📦" label="Browse Feed" />
-            <QuickActionButton href="/wishlist" icon="❤️" label="Wishlist" />
+            <QuickActionButton href="/documents" icon="📄" label="Documents" />
+            <QuickActionButton href="/wishlist" icon="🔖" label="Wishlist" />
+            <QuickActionButton href="/orders" icon="🛒" label="My orders" />
           </div>
         </div>
 
@@ -224,7 +343,7 @@ export default function ProfilePage() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #E0E0E0', backgroundColor: 'white', borderRadius: '8px 8px 0 0', padding: '0' }}>
           {[
             { id: 'info', label: 'Account Info', icon: 'ℹ️' },
-            { id: 'products', label: 'My Products', icon: '📦' },
+            { id: 'products', label: 'My Posts', icon: '📦' },
             { id: 'orders', label: 'My Orders', icon: '🛒' },
             { id: 'connections', label: 'Connections', icon: '🤝' },
             { id: 'reviews', label: 'Reviews', icon: '⭐' },
@@ -253,6 +372,36 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab Content */}
+        {showDeleteModal && postToDelete && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', maxWidth: '420px', width: '100%', padding: '24px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#333', margin: '0 0 12px 0' }}>Delete this post?</h3>
+              <p style={{ fontSize: '14px', color: '#666', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+                This action will permanently remove the listing from your profile and from the feed. You won’t be able to undo it.
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setPostToDelete(null);
+                  }}
+                  style={{ flex: 1, padding: '12px 16px', backgroundColor: '#E0E0E0', color: '#333', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePost(postToDelete)}
+                  style={{ flex: 1, padding: '12px 16px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                >
+                  Delete Post
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ backgroundColor: 'white', borderRadius: '0 0 8px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '24px' }}>
           {/* Account Info Tab */}
           {activeTab === 'info' && (
@@ -260,6 +409,22 @@ export default function ProfilePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', margin: 0 }}>Edit Profile</h3>
                 
+                <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '12px' }}>
+                  <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #0056D2', backgroundColor: '#EAF2FF' }}>
+                    {tempData.profileImageUri ? (
+                      <img src={tempData.profileImageUri} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0056D2', fontWeight: '800', fontSize: '28px' }}>
+                        {tempData.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  <label htmlFor="edit-profile-photo" style={{ padding: '10px 14px', backgroundColor: '#EAF2FF', color: '#0056D2', border: '1px solid #CFE0FF', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>
+                    <input id="edit-profile-photo" type="file" accept="image/*" onChange={handleProfilePhotoUpload} style={{ display: 'none' }} />
+                    {photoUploading ? 'Uploading...' : 'Upload new photo'}
+                  </label>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Full Name *</label>
@@ -356,19 +521,127 @@ export default function ProfilePage() {
                   <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#CCC' }}>Create your first listing to get started</p>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
-                  {userProducts.map((product) => (
-                    <Link key={product.id} href={`/${product.id}`} style={{ textDecoration: 'none' }}>
-                      <div style={{ backgroundColor: '#F5F5F5', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')} onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}>
-                        <div style={{ backgroundColor: '#0056D2', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '28px' }}>📦</div>
-                        <div style={{ padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.productName}</p>
-                          <p style={{ fontSize: '10px', color: '#999', margin: '4px 0 0 0' }}>${product.price}</p>
-                          <p style={{ fontSize: '10px', color: '#4CAF50', margin: '2px 0 0 0' }}>✓ Active</p>
-                        </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+                  {userProducts.map((product) => {
+                    const isEditing = editingPostId === product.id;
+
+                    return (
+                      <div key={product.id} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E0E0E0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        <Link href={`/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <div style={{ width: '100%', height: '120px', backgroundColor: '#F5F5F5', overflow: 'hidden' }}>
+                            {getPostImageUrl(product) ? (
+                              <img src={getPostImageUrl(product)} alt={product.productName || 'Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#999', gap: '6px', fontSize: '12px', fontWeight: '600' }}>
+                                <span style={{ fontSize: '28px' }}>📦</span>
+                                <span>{product.category || 'Product'}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <p style={{ fontSize: '13px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.productName || 'Untitled post'}</p>
+                              <span style={{ fontSize: '10px', color: '#0056D2', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', backgroundColor: 'rgba(0,86,210,0.08)' }}>{product.postType || 'SELL'}</span>
+                            </div>
+                            <p style={{ fontSize: '12px', color: '#666', margin: '0 0 8px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{product.description || 'No description provided.'}</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#999' }}>
+                              <span>{product.category || 'General'}</span>
+                              <span>{product.price ? `USD ${product.price}` : 'Price not listed'}</span>
+                            </div>
+                          </div>
+                        </Link>
+
+                        {isEditing ? (
+                          <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #E0E0E0' }}>
+                            <label style={{ fontSize: '11px', fontWeight: '700', color: '#666' }}>Product Name</label>
+                            <input
+                              value={editingPostData.productName}
+                              onChange={(e) => setEditingPostData({ ...editingPostData, productName: e.target.value })}
+                              placeholder="Product name"
+                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+                            />
+
+                            <label style={{ fontSize: '11px', fontWeight: '700', color: '#666' }}>Description</label>
+                            <textarea
+                              value={editingPostData.description}
+                              onChange={(e) => setEditingPostData({ ...editingPostData, description: e.target.value })}
+                              placeholder="Description"
+                              rows={3}
+                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px', resize: 'vertical' }}
+                            />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              <div>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#666' }}>Category</label>
+                                <select
+                                  value={editingPostData.category}
+                                  onChange={(e) => setEditingPostData({ ...editingPostData, category: e.target.value })}
+                                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+                                >
+                                  <option>Bearings</option>
+                                  <option>Grease</option>
+                                  <option>V-Belts</option>
+                                  <option>Industrial Oils</option>
+                                  <option>Lubricants</option>
+                                  <option>Machinery</option>
+                                  <option>Accessories</option>
+                                  <option>Other</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#666' }}>Type</label>
+                                <select
+                                  value={editingPostData.postType}
+                                  onChange={(e) => setEditingPostData({ ...editingPostData, postType: e.target.value })}
+                                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+                                >
+                                  <option value="SELL">SELL</option>
+                                  <option value="BUY">BUY</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={handleSaveEditedPost}
+                                style={{ flex: 1, padding: '8px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingPostId(null)}
+                                style={{ flex: 1, padding: '8px 10px', backgroundColor: '#999', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid #E0E0E0' }}>
+                            <button
+                              type="button"
+                              onClick={() => openEditPost(product)}
+                              style={{ flex: 1, padding: '8px 10px', backgroundColor: '#0056D2', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPostToDelete(product.id);
+                                setShowDeleteModal(true);
+                              }}
+                              style={{ flex: 1, padding: '8px 10px', backgroundColor: '#F44336', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <Link href="/create-post" style={{ display: 'inline-block', marginTop: '16px', padding: '12px 24px', backgroundColor: '#0056D2', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
@@ -414,30 +687,49 @@ export default function ProfilePage() {
                           </div>
                           <p style={{ fontSize: '14px', fontWeight: '600', color: '#333', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>{connectedName || 'Connected User'}</p>
                           <p style={{ fontSize: '12px', color: '#999', margin: '0 0 12px 0' }}>✓ Connected</p>
-                          <Link 
-                            href={`/messages?user=${connectedUser}`}
-                            style={{ 
-                              display: 'inline-block',
-                              padding: '8px 16px', 
-                              backgroundColor: '#FF8C00', 
-                              color: 'white', 
-                              borderRadius: '6px', 
-                              textDecoration: 'none',
-                              fontSize: '12px', 
-                              fontWeight: '600',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseOver={(e) => {
-                              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF7700';
-                              (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.05)';
-                            }}
-                            onMouseOut={(e) => {
-                              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF8C00';
-                              (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)';
-                            }}
-                          >
-                            💬 Message
-                          </Link>
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <Link 
+                              href={`/profile/${connectedUser}`}
+                              style={{
+                                display: 'inline-block',
+                                padding: '8px 12px', 
+                                backgroundColor: 'white', 
+                                color: '#0056D2', 
+                                border: '1px solid #0056D2',
+                                borderRadius: '6px', 
+                                textDecoration: 'none',
+                                fontSize: '12px', 
+                                fontWeight: '600',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              👤 View Profile
+                            </Link>
+                            <Link 
+                              href={`/messages?user=${connectedUser}`}
+                              style={{ 
+                                display: 'inline-block',
+                                padding: '8px 12px', 
+                                backgroundColor: '#FF8C00', 
+                                color: 'white', 
+                                borderRadius: '6px', 
+                                textDecoration: 'none',
+                                fontSize: '12px', 
+                                fontWeight: '600',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseOver={(e) => {
+                                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF7700';
+                                (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.05)';
+                              }}
+                              onMouseOut={(e) => {
+                                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#FF8C00';
+                                (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)';
+                              }}
+                            >
+                              💬 Message
+                            </Link>
+                          </div>
                         </div>
                       );
                     })}
@@ -482,6 +774,10 @@ export default function ProfilePage() {
         <Link href="/feed" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px', fontWeight: '500' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>📦</span>
           <span>Feed</span>
+        </Link>
+        <Link href="/messages" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px', fontWeight: '500' }}>
+          <span style={{ fontSize: '24px', marginBottom: '4px' }}>💬</span>
+          <span>Messages</span>
         </Link>
         <Link href="/network" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px', fontWeight: '500' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>🤝</span>

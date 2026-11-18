@@ -19,7 +19,7 @@ export default function LoginPage() {
   // Redirect once auth state confirms user is logged in
   useEffect(() => {
     if (loginAttempted && !authLoading && user) {
-      router.replace('/feed');
+      router.replace('/');
     }
   }, [user, authLoading, loginAttempted, router]);
 
@@ -41,10 +41,13 @@ export default function LoginPage() {
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
         <div style={{ maxWidth: '100%', margin: '0 auto', padding: '16px' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white' }}>
-            <span style={{ fontSize: '20px' }}>←</span>
-            <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, color: 'white' }}>Back</h1>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.png" alt="SpinTradeHub logo" style={{ width: '34px', height: '34px', borderRadius: '8px', objectFit: 'cover' }} />
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'white' }}>
+              <span style={{ fontSize: '20px' }}>←</span>
+              <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, color: 'white' }}>Back</h1>
+            </Link>
+          </div>
         </div>
       </header>
 

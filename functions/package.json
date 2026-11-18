@@ -1,0 +1,16 @@
+{
+  "name": "spintradehub-notifications",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test notification.test.js ratings/public-ratings.test.js ratings/public-products.test.js ratings/homepage-discovery.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
+    "nodemailer": "^10.0.16"
+  }
+}

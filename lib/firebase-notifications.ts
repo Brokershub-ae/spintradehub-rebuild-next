@@ -20,7 +20,7 @@ import { db } from './firebase';
 export interface Notification {
   id?: string;
   userId: string;
-  type: 'ORDER' | 'MESSAGE' | 'CONNECTION' | 'REVIEW' | 'SYSTEM' | 'NEW_USER_JOINED';
+  type: 'ORDER' | 'MESSAGE' | 'CONNECTION' | 'REVIEW' | 'SYSTEM' | 'NEW_USER_JOINED' | 'POST_INTERACTION';
   title: string;
   message: string;
   read: boolean;
@@ -33,6 +33,46 @@ export interface Notification {
 }
 
 export const notificationService = {
+  async requestBrowserPermission() {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return 'unsupported' as NotificationPermission | 'unsupported';
+    }
+
+    if (window.Notification.permission === 'granted') {
+      return 'granted' as NotificationPermission | 'unsupported';
+    }
+
+    if (window.Notification.permission === 'denied') {
+      return 'denied' as NotificationPermission | 'unsupported';
+    }
+
+    return window.Notification.requestPermission();
+  },
+
+  showBrowserNotification(title: string, message: string, link?: string) {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return;
+    }
+
+    if (window.Notification.permission !== 'granted') {
+      return;
+    }
+
+    const notification = new window.Notification(title, {
+      body: message,
+      tag: `${title}-${Date.now()}`,
+      icon: '/logo.png',
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      if (link) {
+        window.location.href = link;
+      }
+      notification.close();
+    };
+  },
+
   /**
    * Create a notification
    */
@@ -53,6 +93,12 @@ export const notificationService = {
         timestamp: Date.now(),
         link,
       });
+
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        await notificationService.requestBrowserPermission();
+        notificationService.showBrowserNotification(title, message, link);
+      }
+
       return docRef.id;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -67,15 +113,17 @@ export const notificationService = {
     try {
       const q = query(
         collection(db, 'notifications'),
-        where('userId', '==', userId),
-        where('read', '==', false),
-        orderBy('timestamp', 'desc')
+        where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({
+      const allNotifs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as Notification));
+      
+      return allNotifs
+        .filter((n) => !Boolean(n.read))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     } catch (error) {
       console.error('Error fetching unread notifications:', error);
       return [];
@@ -89,14 +137,15 @@ export const notificationService = {
     try {
       const q = query(
         collection(db, 'notifications'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc')
+        where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({
+      const allNotifs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as Notification));
+      
+      return allNotifs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     } catch (error) {
       console.error('Error fetching notifications:', error);
       return [];
@@ -122,15 +171,15 @@ export const notificationService = {
     try {
       const q = query(
         collection(db, 'notifications'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc')
+        where('userId', '==', userId)
       );
 
       return onSnapshot(q, (snapshot) => {
         const notifications = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        } as Notification));
+        } as Notification)).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        
         callback(notifications);
       });
     } catch (error) {

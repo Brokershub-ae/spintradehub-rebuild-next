@@ -141,7 +141,7 @@ export default function WishlistPage() {
 
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#0056D2', margin: '0 0 8px 0' }}>
-          ❤️ My Wishlist
+          🔖 My Wishlist
         </h1>
         <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
           {wishlistItems.length} item{wishlistItems.length !== 1 ? 's' : ''} saved
@@ -158,7 +158,7 @@ export default function WishlistPage() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           }}
         >
-          <p style={{ fontSize: '40px', margin: '0 0 16px 0' }}>❤️</p>
+          <p style={{ fontSize: '40px', margin: '0 0 16px 0' }}>🔖</p>
           <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#333', margin: '0 0 8px 0' }}>
             Your wishlist is empty
           </h2>

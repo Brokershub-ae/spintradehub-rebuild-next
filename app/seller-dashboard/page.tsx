@@ -42,6 +42,7 @@ export default function SellerDashboardPage() {
     totalReviews: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function SellerDashboardPage() {
   const loadSellerData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
 
       // Get seller's orders
       const orders = await orderService.getSellerOrders(user!.uid);
@@ -113,12 +115,17 @@ export default function SellerDashboardPage() {
       });
     } catch (error) {
       console.error('Error loading seller data:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
   if (authLoading || loading) {
+    if (loadError) {
+      return <div role="alert" style={{ padding: '40px', color: '#dc2626' }}>Unable to load your dashboard and rating. Please refresh to try again. <Link href="/profile">Back to profile</Link></div>;
+    }
+
     return (
       <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'Inter, sans-serif' }}>
         <p>Loading dashboard...</p>

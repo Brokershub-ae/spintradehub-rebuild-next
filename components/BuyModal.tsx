@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { orderService } from '@/lib/firebase-orders';
+import { messagingService } from '@/lib/firebase-messaging';
 import { useToast } from '@/lib/toast-context';
 
 interface BuyModalProps {
@@ -37,19 +38,29 @@ export const BuyModal: React.FC<BuyModalProps> = ({
       return;
     }
 
+    const buyerId = buyer?.uid;
+    const sellerId = seller?.uid || product?.creatorId || product?.userId;
+    const buyerName = buyer?.name || buyer?.email || 'Buyer';
+    const sellerName = seller?.name || product?.creatorName || 'Seller';
+
+    if (!buyerId || !sellerId) {
+      setError('Seller or buyer information is unavailable.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
       const inquiryId = await orderService.createOrder({
-        buyerId: buyer.uid,
-        buyerName: buyer.name || buyer.email,
-        buyerEmail: buyer.email,
-        sellerId: seller.uid || product.creatorId,
-        sellerName: seller.name || 'Seller',
+        buyerId,
+        buyerName,
+        buyerEmail: buyer.email || '',
+        sellerId,
+        sellerName,
         sellerEmail: seller.email || '',
-        productId: product.id,
-        productName: product.productName,
+        productId: product.id || '',
+        productName: product.productName || 'Untitled post',
         quantity,
         pricePerUnit: product.price || 0,
         totalPrice,
@@ -57,10 +68,47 @@ export const BuyModal: React.FC<BuyModalProps> = ({
         notes,
       });
 
+      const productDetails = [
+        `Product: ${product.productName || 'Untitled post'}`,
+        `Category: ${product.category || 'Uncategorized'}`,
+        `Description: ${product.description || 'No description provided'}`,
+        `Seller: ${sellerName}`,
+        `Quantity requested: ${quantity}`,
+        `Location/Contact: ${deliveryAddress}`,
+      ];
+
+      if (notes?.trim()) {
+        productDetails.push(`Additional notes: ${notes.trim()}`);
+      }
+
+      const inquiryText = `New inquiry for this post:\n${productDetails.join('\n')}`;
+      const productContext = {
+        productId: product.id,
+        productName: product.productName || 'Untitled post',
+        description: product.description || product.fullDescription || 'No description provided',
+        category: product.category || 'Uncategorized',
+        sellerName,
+        sellerId,
+        quantity,
+        location: deliveryAddress,
+        notes: notes?.trim() || '',
+        postUrl: product.id ? `/${product.id}` : '/feed',
+      };
+
+      await messagingService.sendMessage(
+        buyerId,
+        buyerName,
+        sellerId,
+        sellerName,
+        inquiryText,
+        undefined,
+        productContext
+      );
+
       addToast({
         type: 'success',
         title: 'Inquiry Sent',
-        message: `Your inquiry has been sent. ID: ${inquiryId.substring(0, 8)}`,
+        message: `Your inquiry has been sent to ${sellerName}.`,
         duration: 4000,
       });
 

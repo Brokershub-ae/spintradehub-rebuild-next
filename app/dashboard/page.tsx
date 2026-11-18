@@ -46,7 +46,7 @@ export default function DashboardPage() {
   return (
     <div style={{ backgroundColor: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
       <header style={{ background: '#0056D2', boxShadow: '0 4px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', margin: 0 }}>Dashboard</h1>
@@ -57,7 +57,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px' }}>
+      <div style={{ padding: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           {[
             { label: 'Total Products', value: products.length },
@@ -109,10 +109,6 @@ export default function DashboardPage() {
         <Link href="/feed" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>📦</span>
           <span>Feed</span>
-        </Link>
-        <Link href="/dashboard" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#0056D2', fontSize: '12px', fontWeight: '600' }}>
-          <span style={{ fontSize: '24px', marginBottom: '4px' }}>📊</span>
-          <span>Dashboard</span>
         </Link>
         <Link href="/profile" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', textDecoration: 'none', color: '#999', fontSize: '12px' }}>
           <span style={{ fontSize: '24px', marginBottom: '4px' }}>👤</span>

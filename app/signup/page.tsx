@@ -45,7 +45,7 @@ export default function SignupPage() {
         role: role as 'supplier' | 'buyer',
       });
 
-      router.push('/feed');
+      router.push('/');
     } catch (err: any) {
       setError(err.message || 'Signup failed');
     } finally {

@@ -1,0 +1,37 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "promotion-notifications",
+      "ignore": [
+        "node_modules",
+        "ratings",
+        ".git",
+        "*.test.js",
+        "README.md",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" test"
+      ]
+    },
+    {
+      "source": "functions/ratings",
+      "codebase": "public-ratings",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.test.js",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" test"
+      ]
+    }
+  ]
+}

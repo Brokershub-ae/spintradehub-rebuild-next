@@ -159,6 +159,7 @@ export default function NotificationsPage() {
                 {notif.type === 'MESSAGE' && '💬'}
                 {notif.type === 'ORDER' && '📦'}
                 {notif.type === 'REVIEW' && '⭐'}
+                {notif.type === 'POST_INTERACTION' && '🔔'}
                 {notif.type === 'SYSTEM' && '📢'}
               </div>
 

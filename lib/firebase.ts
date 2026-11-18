@@ -18,12 +18,18 @@ let auth: any = null;
 let db: any = null;
 let storage: any = null;
 
-// Initialize only on client-side to avoid build errors
-if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
+// Initialize only on client-side to avoid build errors and handle missing env values gracefully.
+if (typeof window !== 'undefined') {
+  const configReady = Object.values(firebaseConfig).every((value) => Boolean(value));
+
+  if (configReady) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  } else {
+    console.warn('Firebase config is missing. Auth and Firestore features are disabled until environment variables are set.');
+  }
 }
 
 export { auth, db, storage };

@@ -108,7 +108,7 @@ export const wishlistService = {
   /**
    * Listen to wishlist changes in real-time
    */
-  listenToWishlist(userId: string, callback: (items: WishlistItem[]) => void) {
+  listenToWishlist(userId: string, callback: (items: WishlistItem[]) => void, onError?: (error: Error) => void) {
     try {
       const q = query(collection(db, 'wishlists'), where('userId', '==', userId));
 
@@ -118,9 +118,13 @@ export const wishlistService = {
           ...doc.data(),
         } as WishlistItem));
         callback(items);
+      }, (error) => {
+        console.error('Error listening to wishlist:', error);
+        onError?.(error);
       });
     } catch (error) {
       console.error('Error setting up wishlist listener:', error);
+      onError?.(error instanceof Error ? error : new Error('Wishlist listener could not start'));
       return undefined;
     }
   },

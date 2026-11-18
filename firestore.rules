@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /publicUserRatings/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /publicProducts/{postId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /publicSuppliers/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /publicBuyers/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /publicSearchStats/{termId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /savedSearches/{searchId} {
+      allow get: if request.auth != null && (!exists(/databases/$(database)/documents/savedSearches/$(searchId)) || resource.data.userId == request.auth.uid);
+      allow list, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['userId', 'brand', 'modelNumber', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.brand is string && request.resource.data.brand.size() <= 100
+        && request.resource.data.modelNumber is string && request.resource.data.modelNumber.size() <= 100
+        && (request.resource.data.brand.size() > 0 || request.resource.data.modelNumber.size() > 0)
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 60000
+        && request.resource.data.createdAt <= request.time.toMillis() + 60000;
+    }
+    match /searchActivity/{eventId} {
+      allow get: if request.auth != null && (!exists(/databases/$(database)/documents/searchActivity/$(eventId)) || resource.data.userId == request.auth.uid);
+      allow list: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['userId', 'productId', 'term', 'day'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.productId is string && request.resource.data.productId.size() <= 150
+        && request.resource.data.term is string && request.resource.data.term.size() > 0 && request.resource.data.term.size() <= 200
+        && request.resource.data.day == int(request.time.toMillis() / 86400000)
+        && eventId == request.auth.uid + '_' + string(request.resource.data.day);
+    }
+
+    // Preserve existing authenticated access, except server-owned public summaries.
+    match /{collection}/{document=**} {
+      allow read, write: if request.auth != null
+                         && collection != 'publicUserRatings'
+                         && collection != 'publicProducts'
+                         && collection != 'publicSuppliers'
+                         && collection != 'publicBuyers'
+                         && collection != 'publicSearchStats'
+                         && collection != 'searchActivity'
+                         && collection != 'searchActivityReceipts'
+                         && collection != 'savedSearches';
+    }
+  }
+}

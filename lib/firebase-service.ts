@@ -20,6 +20,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './firebase';
 import { notificationService } from './firebase-notifications';
+import { validateProductPhotos } from './product-details';
 
 export interface User {
   uid: string;
@@ -37,22 +38,42 @@ export interface User {
 export interface Product {
   id?: string;
   creatorId: string;
-  creatorName: string;
+  creatorName?: string;
   productName: string;
-  description: string;
+  brand?: string;
+  modelNumber?: string;
+  condition?: string;
+  minimumOrderQuantity?: string;
+  minimumOrderUnit?: string;
+  imageUris?: string[];
+  description?: string;
+  fullDescription?: string;
   price: string;
   category: string;
   imageUri?: string;
+  imageUrl?: string;
+  photo?: string;
   pdfUri?: string;
   attachmentUris?: string[];
-  rating: number;
-  reviewCount: number;
+  rating?: number;
+  reviewCount?: number;
+  likes?: number;
+  shares?: number;
+  comments?: Array<{
+    id?: string;
+    user?: string;
+    userId?: string;
+    text: string;
+    timestamp?: number | string;
+  }>;
+  likedBy?: string[];
   isFavorite?: boolean;
-  postType: 'SELL' | 'BUY';
+  postType?: 'SELL' | 'BUY';
   quantity?: string;
   unit?: string;
   location?: string;
   timestamp: number;
+  userId?: string;
 }
 
 export interface Message {
@@ -181,6 +202,18 @@ export const productService = {
     return docRef.id;
   },
 
+  async getPostById(postId: string): Promise<Product | null> {
+    const docSnap = await getDoc(doc(db, 'posts', postId));
+    if (!docSnap.exists()) {
+      return null;
+    }
+
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as Product;
+  },
+
   async getPosts(): Promise<Product[]> {
     const q = query(
       collection(db, 'posts'),
@@ -197,27 +230,36 @@ export const productService = {
   async getPostsByCategory(category: string): Promise<Product[]> {
     const q = query(
       collection(db, 'posts'),
-      where('category', '==', category),
-      orderBy('timestamp', 'desc')
+      where('category', '==', category)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
+    const posts = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     } as Product));
+
+    return posts.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
   },
 
   async getPostsByCreator(creatorId: string): Promise<Product[]> {
     const q = query(
       collection(db, 'posts'),
-      where('creatorId', '==', creatorId),
-      orderBy('timestamp', 'desc')
+      orderBy('timestamp', 'desc'),
+      limit(200)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Product));
+    const posts = querySnapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Product))
+      .filter((post) => {
+        const postData = post as Product & { creator?: string; seller?: string };
+        const postCreatorId = postData.creatorId || postData.userId || postData.creator || postData.seller;
+        return postCreatorId === creatorId;
+      });
+
+    return posts.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
   },
 
   async updatePost(postId: string, updates: Partial<Product>) {
@@ -232,6 +274,19 @@ export const productService = {
     const storageRef = ref(storage, `posts/${postId}/${file.name}`);
     await uploadBytes(storageRef, file);
     return await getDownloadURL(storageRef);
+  },
+
+  async uploadProductPhotos(userId: string, files: File[], existingCount = 0): Promise<string[]> {
+    validateProductPhotos(files, existingCount);
+    if (!storage) throw new Error('Photo upload is unavailable. Please try again later.');
+    const urls: string[] = [];
+    const batch = crypto.randomUUID();
+    for (const [index, file] of files.entries()) {
+      const storageRef = ref(storage, `products/${userId}/${batch}_${index}_${file.name}`);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      urls.push(await getDownloadURL(storageRef));
+    }
+    return urls;
   },
 };
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getChatbotResponse } from '@/lib/chatbot-knowledge-base';
 import { isProductQuery, searchPostsForQuery, formatProductResults } from '@/lib/chatbot-product-search';
+import { FAQS } from '@/lib/faq-data';
 import Link from 'next/link';
 
 interface Message {
@@ -14,7 +15,7 @@ interface Message {
 }
 
 const QUICK_QUESTIONS = [
-  "Who sells bearings at cheapest rate?",
+  "Find the Best Bearing Supplier near me.",
   "Find best grease supplier near me",
   "How to post a product?",
   "How to connect with suppliers?",
@@ -44,7 +45,7 @@ I can help you with:
 ✅ 100% Accurate answers about SpinTradeHub
 ✅ 24/7 Availability - Always online to help
 ✅ Instant Responses - AI-powered instant answers
-✅ Business Support - Call +971541635009 for money/payment questions
+✅ Business Support - Email info@spintradehub.com or Customercare@spintradehub.com for more inquiries
 
 What would you like to know?`,
 
@@ -72,6 +73,23 @@ What would you like to know?`,
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+
+    // Exact FAQ question (e.g. tapped from the FAQ chips) → instant canned answer
+    const faq = FAQS.find(f => f.q.trim().toLowerCase() === text.trim().toLowerCase().replace(/\?*$/, '?'))
+      || FAQS.find(f => f.q.trim().toLowerCase().replace(/\?+$/, '') === text.trim().toLowerCase().replace(/\?+$/, ''));
+    if (faq) {
+      setTimeout(() => {
+        const botMsg: Message = {
+          id: Date.now() + 1,
+          role: 'bot',
+          text: `**${faq.q}**\n\n${faq.a}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages(prev => [...prev, botMsg]);
+        setIsTyping(false);
+      }, 400);
+      return;
+    }
 
     // Check if user is asking about products/suppliers/prices → search live Firestore
     if (isProductQuery(text)) {
@@ -111,7 +129,7 @@ What would you like to know?`,
     <div style={{ backgroundColor: '#F5F5F5', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{ background: 'linear-gradient(135deg, #0056D2 0%, #003D9E 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', flexShrink: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Link href="/feed" style={{ color: 'white', textDecoration: 'none', fontSize: '20px', cursor: 'pointer' }}>←</Link>
             <div style={{ width: '44px', height: '44px', backgroundColor: '#FF8C00', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 2px 8px rgba(255,140,0,0.3)' }}>🤖</div>
@@ -124,7 +142,7 @@ What would you like to know?`,
       </header>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', maxWidth: '800px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
 
         {/* Quick Questions */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
@@ -154,6 +172,42 @@ What would you like to know?`,
               {q}
             </button>
           ))}
+        </div>
+
+        {/* FAQ quick answers */}
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ textAlign: 'center', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 8px' }}>
+            ❓ Frequently Asked Questions — tap for an instant answer
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+            {FAQS.map((faq) => (
+              <button key={faq.q} onClick={() => sendMessage(faq.q)}
+                style={{
+                  padding: '7px 12px',
+                  backgroundColor: 'white',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FF8C00';
+                  e.currentTarget.style.borderColor = '#FF8C00';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#cbd5e1';
+                  e.currentTarget.style.color = '#334155';
+                }}
+              >
+                {faq.q}
+              </button>
+            ))}
+          </div>
         </div>
 
         {messages.map((msg) => (
@@ -224,13 +278,13 @@ What would you like to know?`,
 
       {/* Input */}
       <div style={{ backgroundColor: 'white', borderTop: '1px solid #E0E0E0', padding: '14px 16px', flexShrink: 0, boxShadow: '0 -2px 8px rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
-            placeholder="Ask anything... (For money/payment help: +971541635009)"
+            placeholder="Ask anything... (For more inquiry: info@spintradehub.com)"
             style={{ 
               flex: 1, 
               padding: '11px 16px', 
@@ -265,7 +319,7 @@ What would you like to know?`,
           </button>
         </div>
         <p style={{ fontSize: '10px', color: '#999', margin: '8px 0 0', textAlign: 'center' }}>
-          💬 AI-Powered 24/7 Support | 📞 For urgent payment/money help: <strong>+971541635009</strong>
+          💬 AI-Powered 24/7 Support | 📧 For More Inquiry: <strong>info@spintradehub.com</strong> or <strong>Customercare@spintradehub.com</strong>
         </p>
       </div>
 

@@ -23,7 +23,7 @@ Platform features you know about:
 - AI chatbot (you!)
 - Android app available
 - 100% FREE — no commission, no hidden charges
-- Support: +971541635009
+- Support: info@spintradehub.com or Customercare@spintradehub.com
 
 Important rules:
 - Always respond in the same language the user writes in
@@ -31,7 +31,7 @@ Important rules:
 - If asked about prices, always refer to actual listings on the platform
 - Encourage users to post products or connect with sellers
 - Keep responses clear and structured with bullet points where helpful
-- For payment/money issues, always refer to +971541635009`;
+- For any other inquiries, refer to info@spintradehub.com or Customercare@spintradehub.com`;
 
 export async function POST(req: NextRequest) {
   try {
