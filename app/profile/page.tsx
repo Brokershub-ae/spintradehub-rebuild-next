@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth-context';
 import { userService, productService, connectionService } from '@/lib/firebase-service';
 import { listenToUserConnections } from '@/lib/realtime-sync';
 import Link from 'next/link';
+import ProductPhotosPicker from '@/components/ProductPhotosPicker';
+import { getProductImages } from '@/lib/product-details';
 
 // Quick Action Button Component
 function QuickActionButton({ href, icon, label }: { href: string; icon: string; label: string }) {
@@ -64,6 +66,9 @@ export default function ProfilePage() {
     postType: 'SELL',
     location: '',
   });
+  const [editingExistingImages, setEditingExistingImages] = useState<string[]>([]);
+  const [editingPhotoFiles, setEditingPhotoFiles] = useState<File[]>([]);
+  const [savingPost, setSavingPost] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -172,6 +177,8 @@ export default function ProfilePage() {
       postType: product.postType || 'SELL',
       location: product.location || '',
     });
+    setEditingExistingImages(getProductImages(product));
+    setEditingPhotoFiles([]);
   };
 
   const handleSaveEditedPost = async () => {
@@ -186,12 +193,21 @@ export default function ProfilePage() {
     }
 
     try {
+      setSavingPost(true);
+      const imageUris = [...editingExistingImages];
+      if (editingPhotoFiles.length > 0) {
+        if (!user) throw new Error('Not signed in');
+        const newUrls = await productService.uploadProductPhotos(user.uid, editingPhotoFiles, editingExistingImages.length);
+        imageUris.push(...newUrls);
+      }
       const updatedPost: Partial<any> = {
         productName: trimmedProductName,
         description: trimmedDescription,
         category: editingPostData.category,
         postType: editingPostData.postType as 'SELL' | 'BUY',
         location: editingPostData.location,
+        imageUris,
+        imageUri: imageUris[0] || '',
       };
 
       await productService.updatePost(editingPostId, updatedPost);
@@ -201,9 +217,12 @@ export default function ProfilePage() {
         )
       );
       setEditingPostId(null);
+      setEditingPhotoFiles([]);
     } catch (error) {
       console.error('Error updating product:', error);
       alert('Failed to update post. Please try again.');
+    } finally {
+      setSavingPost(false);
     }
   };
 
@@ -601,13 +620,22 @@ export default function ProfilePage() {
                               </div>
                             </div>
 
+                            <ProductPhotosPicker
+                              files={editingPhotoFiles}
+                              onChange={setEditingPhotoFiles}
+                              existing={editingExistingImages}
+                              onRemoveExisting={(index) => setEditingExistingImages((prev) => prev.filter((_, i) => i !== index))}
+                              disabled={savingPost}
+                            />
+
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
                                 type="button"
                                 onClick={handleSaveEditedPost}
-                                style={{ flex: 1, padding: '8px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                                disabled={savingPost}
+                                style={{ flex: 1, padding: '8px 10px', backgroundColor: savingPost ? '#9CCC9E' : '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: savingPost ? 'default' : 'pointer', fontSize: '12px', fontWeight: '600' }}
                               >
-                                Save
+                                {savingPost ? 'Saving...' : 'Save'}
                               </button>
                               <button
                                 type="button"
