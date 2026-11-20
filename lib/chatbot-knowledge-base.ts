@@ -227,7 +227,7 @@ For profile photo or background: Max 5MB, JPG/PNG format`,
    • Location (where buyer collects/ships from)
 
 3️⃣ **Add Media:**
-   • Upload Product Photo (max 5MB)
+   • Upload Product Photo (max 50MB)
    • Upload PDF Catalogue (max 10MB)
    • Add multiple images
    • Ensure images are clear & high-quality
@@ -717,7 +717,7 @@ Contact support:
 ✓ Ensure contact is in network
 
 **5. Photo Upload Fails**
-✓ Check file size (max 5MB)
+✓ Check file size (max 50MB)
 ✓ Check file format (JPG, PNG)
 ✓ Check internet connection
 ✓ Try smaller image

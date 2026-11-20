@@ -21,7 +21,7 @@ export default function ProductPhotosPicker({ files, onChange, existing = [], on
 
   return <fieldset disabled={disabled} style={{ border: 0, padding: 0, margin: '12px 0', minWidth: 0 }}>
     <legend>Product photos ({existing.length + files.length}/10)</legend>
-    <p>PNG, JPEG, WebP or GIF. Up to 10 photos, 5 MB each. The first photo is the cover.</p>
+    <p>PNG, JPEG, WebP or GIF. Up to 10 photos, 50 MB each. The first photo is the cover.</p>
     {error && <p role="alert">{error}</p>}
     <label>Add product photos<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif"
       onChange={event => {

@@ -1,5 +1,5 @@
 export const MAX_PRODUCT_PHOTOS = 10;
-export const MAX_PRODUCT_PHOTO_BYTES = 5 * 1024 * 1024;
+export const MAX_PRODUCT_PHOTO_BYTES = 50 * 1024 * 1024;
 export const PRODUCT_CONDITIONS = ['New', 'Used', 'Refurbished'] as const;
 
 export interface ProductSpecifications {
@@ -36,7 +36,7 @@ export function validateProductPhotos(files: readonly File[], existingCount = 0)
       throw new Error(`${file.name}: choose a PNG, JPEG, WebP or GIF image.`);
     }
     if (file.size > MAX_PRODUCT_PHOTO_BYTES) {
-      throw new Error(`${file.name}: each photo must be 5 MB or smaller.`);
+      throw new Error(`${file.name}: each photo must be 50 MB or smaller.`);
     }
   }
 }
