@@ -35,13 +35,16 @@ Important rules:
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'ai-not-configured' }, { status: 503 });
+    }
     const { message, history, products } = await req.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
 
     // Build context with real product data if available
     let productContext = '';

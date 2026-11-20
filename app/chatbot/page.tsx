@@ -92,37 +92,54 @@ What would you like to know?`,
     }
 
     // Check if user is asking about products/suppliers/prices → search live Firestore
+    const history = messages.slice(-8).map(m => ({ role: m.role, text: m.text }));
+    const pushBot = (responseText: string) => {
+      const botMsg: Message = {
+        id: Date.now() + 1,
+        role: 'bot',
+        text: responseText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, botMsg]);
+      setIsTyping(false);
+    };
+    const askAi = async (payload: { message: string; history: { role: string; text: string }[]; products?: unknown[] }): Promise<string> => {
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) return '';
+        const data = await res.json();
+        return typeof data.text === 'string' ? data.text.trim() : '';
+      } catch {
+        return '';
+      }
+    };
+
     if (isProductQuery(text)) {
-      searchPostsForQuery(text).then(posts => {
-        const responseText = formatProductResults(posts, text);
-        const botMsg: Message = {
-          id: Date.now() + 1,
-          role: 'bot',
-          text: responseText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        setMessages(prev => [...prev, botMsg]);
-        setIsTyping(false);
+      searchPostsForQuery(text).then(async posts => {
+        const aiText = await askAi({ message: text, history, products: posts });
+        pushBot(aiText || formatProductResults(posts, text));
       });
       return;
     }
 
-    // Use knowledge base for all other questions
-    setTimeout(() => {
+    // Real AI first; local knowledge base as fallback when the AI is unavailable
+    void (async () => {
+      const aiText = await askAi({ message: text, history });
+      if (aiText) {
+        pushBot(aiText);
+        return;
+      }
       const response = getChatbotResponse({
         userMessage: text,
         userId: user?.uid,
         previousMessages: messages.map(m => m.text)
       });
-      const botMsg: Message = {
-        id: Date.now() + 1,
-        role: 'bot',
-        text: response.text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 600 + Math.random() * 400);
+      pushBot(response.text);
+    })();
   };
 
   return (
