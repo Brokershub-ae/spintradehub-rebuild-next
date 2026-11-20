@@ -35,7 +35,7 @@ Important rules:
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'ai-not-configured' }, { status: 503 });
     }
     const { message, history, products } = await req.json();
@@ -43,8 +43,6 @@ export async function POST(req: NextRequest) {
     if (!message) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
-
-    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
 
     // Build context with real product data if available
     let productContext = '';
@@ -55,6 +53,40 @@ export async function POST(req: NextRequest) {
       });
       productContext += `\nBase your answer on these real listings. Recommend specific sellers with their names and profile links.`;
     }
+
+    // Prefer Groq (free tier) when configured
+    if (process.env.GROQ_API_KEY) {
+      const groqMessages = [
+        { role: 'system', content: SYSTEM_PROMPT + productContext },
+        ...(history || []).map((msg: any) => ({
+          role: msg.role === 'bot' ? 'assistant' : 'user',
+          content: String(msg.text || '').slice(0, 4000),
+        })),
+        { role: 'user', content: String(message).slice(0, 4000) },
+      ];
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          max_tokens: 1024,
+          temperature: 0.7,
+        }),
+      });
+      if (!groqRes.ok) {
+        console.error('Groq API error:', groqRes.status, await groqRes.text());
+        return NextResponse.json({ error: 'AI service temporarily unavailable. Please try again.' }, { status: 502 });
+      }
+      const groqData = await groqRes.json();
+      const groqText = groqData?.choices?.[0]?.message?.content;
+      if (typeof groqText !== 'string' || !groqText.trim()) {
+        return NextResponse.json({ error: 'AI service temporarily unavailable. Please try again.' }, { status: 502 });
+      }
+      return NextResponse.json({ text: groqText.trim() });
+    }
+
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
 
     // Build conversation history for Gemini
     const chatHistory = (history || []).map((msg: any) => ({
